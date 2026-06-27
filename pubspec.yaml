@@ -1,0 +1,38 @@
+name: arena
+description: "Arena — jump into a room and debate anything."
+# Prevents accidental publishing to pub.dev.
+publish_to: 'none'
+
+# Version: <name>+<build number>. For Android, name -> versionName and the
+# build number -> versionCode. Bump the build number on every Play Store upload.
+version: 1.0.0+1
+
+environment:
+  sdk: ^3.12.2
+
+dependencies:
+  flutter:
+    sdk: flutter
+
+  # iOS-style icons (used in a few places).
+  cupertino_icons: ^1.0.8
+
+  # NOTE: The packages below are added during setup with ONE command so their
+  # versions always match your Flutter install (see SETUP_WINDOWS.md, Step 3):
+  #   flutter pub add firebase_core cloud_firestore firebase_auth firebase_messaging crypto shared_preferences flutter_local_notifications timezone
+  # After running that, this section will list them automatically.
+  #   - firebase_core / cloud_firestore / firebase_auth : the online backend
+  #   - firebase_messaging : push notifications (used from Stage 3 on)
+  #   - crypto : hashes private-room passwords
+  #   - shared_preferences : remembers who you've blocked (on this phone)
+  #   - flutter_local_notifications + timezone : daily "topic of the day" alert
+
+dev_dependencies:
+  flutter_test:
+    sdk: flutter
+
+  # Recommended lints for good Flutter/Dart practices.
+  flutter_lints: ^6.0.0
+
+flutter:
+  uses-material-design: true

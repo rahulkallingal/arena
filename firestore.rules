@@ -1,0 +1,58 @@
+rules_version = '2';
+
+// Arena security rules (Stage 1).
+// Anyone signed in (even anonymously, by picking a name) can read rooms and
+// messages and post their own. Nobody can post as someone else, and only a
+// room's creator can delete it. Tighten these further in later stages when we
+// add moderation.
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    // A signed-in user is one who has gone through the name screen.
+    function signedIn() {
+      return request.auth != null;
+    }
+
+    // Moderation reports. Anyone signed in can file one; for safety nobody can
+    // read or change them from the app (review them in the Firebase console).
+    match /reports/{reportId} {
+      allow create: if signedIn()
+                    && request.resource.data.reporterId == request.auth.uid;
+      allow read, update, delete: if false;
+    }
+
+    // Each person's profile doc — they may only write their own.
+    match /users/{userId} {
+      allow read: if signedIn();
+      allow write: if signedIn() && request.auth.uid == userId;
+    }
+
+    // Debate rooms.
+    match /rooms/{roomId} {
+      allow read: if signedIn();
+      // Create only with yourself as the creator.
+      allow create: if signedIn()
+                    && request.resource.data.createdBy == request.auth.uid;
+      // Updates are limited to bumping lastActivity (used when a message is
+      // sent). The name/topic/creator cannot be changed after creation.
+      allow update: if signedIn()
+                    && request.resource.data.createdBy == resource.data.createdBy
+                    && request.resource.data.name == resource.data.name
+                    && request.resource.data.topic == resource.data.topic;
+      // Only the creator can delete their room.
+      allow delete: if signedIn() && resource.data.createdBy == request.auth.uid;
+
+      // Messages inside a room.
+      match /messages/{messageId} {
+        allow read: if signedIn();
+        // You may only post as yourself, and messages can't be edited.
+        allow create: if signedIn()
+                      && request.resource.data.senderId == request.auth.uid;
+        allow update: if false;
+        // You may delete your own message (used by moderation later).
+        allow delete: if signedIn()
+                      && resource.data.senderId == request.auth.uid;
+      }
+    }
+  }
+}
