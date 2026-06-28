@@ -10,6 +10,7 @@ import '../widgets/room_card.dart';
 import 'chat_room_screen.dart';
 import 'create_room_screen.dart';
 import 'login_screen.dart';
+import 'room_discovery_screen.dart';
 
 /// The home screen: today's featured topic, a search box, category filters, and
 /// the live list of every debate room.
@@ -73,6 +74,15 @@ class _RoomsListScreenState extends State<RoomsListScreen> {
         title: const Text('Arena',
             style: TextStyle(fontWeight: FontWeight.bold, fontSize: 22)),
         actions: [
+          IconButton(
+            tooltip: 'Discover rooms',
+            icon: const Icon(Icons.explore),
+            onPressed: () {
+              Navigator.of(context).push(
+                MaterialPageRoute(builder: (_) => const RoomDiscoveryScreen()),
+              );
+            },
+          ),
           IconButton(
             tooltip: 'Sign out',
             icon: const Icon(Icons.logout),

@@ -21,7 +21,7 @@ android {
     defaultConfig {
         applicationId = "com.arena.arena"
         // Firebase Auth/Firestore need at least Android 6 (API 23).
-        minSdk = 23
+        minSdk = flutter.minSdkVersion
         targetSdk = flutter.targetSdkVersion
         versionCode = flutter.versionCode
         versionName = flutter.versionName
