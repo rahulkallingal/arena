@@ -25,6 +25,12 @@ service cloud.firestore {
     match /users/{userId} {
       allow read: if signedIn();
       allow write: if signedIn() && request.auth.uid == userId;
+
+      // PetBloom stores each user's pets, reminders and heat dates under
+      // their own uid. Only the owner may read or write that subtree.
+      match /{document=**} {
+        allow read, write: if signedIn() && request.auth.uid == userId;
+      }
     }
 
     // Debate rooms.
