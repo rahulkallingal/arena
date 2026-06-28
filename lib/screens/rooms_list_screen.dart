@@ -9,7 +9,7 @@ import '../theme.dart';
 import '../widgets/room_card.dart';
 import 'chat_room_screen.dart';
 import 'create_room_screen.dart';
-import 'name_screen.dart';
+import 'login_screen.dart';
 
 /// The home screen: today's featured topic, a search box, category filters, and
 /// the live list of every debate room.
@@ -80,7 +80,7 @@ class _RoomsListScreenState extends State<RoomsListScreen> {
               await _auth.signOut();
               if (context.mounted) {
                 Navigator.of(context).pushReplacement(
-                  MaterialPageRoute(builder: (_) => const NameScreen()),
+                  MaterialPageRoute(builder: (_) => const LoginScreen()),
                 );
               }
             },

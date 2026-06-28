@@ -1,7 +1,7 @@
 import 'package:firebase_core/firebase_core.dart';
 import 'package:flutter/material.dart';
 
-import 'screens/name_screen.dart';
+import 'screens/login_screen.dart';
 import 'screens/rooms_list_screen.dart';
 import 'services/auth_service.dart';
 import 'services/notification_service.dart';
@@ -50,8 +50,8 @@ class _Root extends StatelessWidget {
           );
         }
         final user = snapshot.data;
-        if (user == null || (user.displayName ?? '').isEmpty) {
-          return const NameScreen();
+        if (user == null) {
+          return const LoginScreen();
         }
         return const RoomsListScreen();
       },
