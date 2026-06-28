@@ -22,13 +22,17 @@ class RoomService {
         .map((snap) => snap.docs.map(Room.fromDoc).toList());
   }
 
-  /// Live list of rooms created by a specific user, newest activity first.
+  /// Live list of rooms created by a specific user.
   Stream<List<Room>> watchMyRooms(String userId) {
     return _rooms
         .where('createdBy', isEqualTo: userId)
-        .orderBy('lastActivity', descending: true)
         .snapshots()
-        .map((snap) => snap.docs.map(Room.fromDoc).toList());
+        .map((snap) {
+          final rooms = snap.docs.map(Room.fromDoc).toList();
+          // Sort by lastActivity on the client side to avoid composite index
+          rooms.sort((a, b) => b.lastActivity.compareTo(a.lastActivity));
+          return rooms;
+        });
   }
 
   /// Creates a room and returns its new id. For a private room, pass the raw

@@ -141,7 +141,6 @@ class _RoomDiscoveryScreenState extends State<RoomDiscoveryScreen> {
       stream: FirebaseFirestore.instance
           .collection('rooms')
           .where('isPrivate', isEqualTo: false)
-          .orderBy('lastActivity', descending: true)
           .snapshots(),
       builder: (context, snapshot) {
         if (snapshot.hasError) {
@@ -152,9 +151,11 @@ class _RoomDiscoveryScreenState extends State<RoomDiscoveryScreen> {
           return const Center(child: CircularProgressIndicator());
         }
 
-        final allRooms = snapshot.data?.docs.map((doc) {
+        var allRooms = snapshot.data?.docs.map((doc) {
           return Room.fromDoc(doc as DocumentSnapshot<Map<String, dynamic>>);
         }).toList() ?? [];
+        // Sort by lastActivity on client side to avoid composite index
+        allRooms.sort((a, b) => (b.lastActivity ?? DateTime(2000)).compareTo(a.lastActivity ?? DateTime(2000)));
 
         // Filter rooms - exclude user's own rooms
         var filteredRooms = allRooms
