@@ -16,6 +16,14 @@ dependencies:
 
   # iOS-style icons (used in a few places).
   cupertino_icons: ^1.0.8
+  firebase_core: ^4.11.0
+  cloud_firestore: ^6.6.0
+  firebase_auth: ^6.5.4
+  firebase_messaging: ^16.4.1
+  crypto: ^3.0.7
+  shared_preferences: ^2.5.5
+  flutter_local_notifications: ^22.0.1
+  timezone: ^0.11.0
 
   # NOTE: The packages below are added during setup with ONE command so their
   # versions always match your Flutter install (see SETUP_WINDOWS.md, Step 3):

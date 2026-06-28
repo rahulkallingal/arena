@@ -26,7 +26,7 @@ class NotificationService {
       const android = AndroidInitializationSettings('@mipmap/ic_launcher');
       const ios = DarwinInitializationSettings();
       await _plugin.initialize(
-        const InitializationSettings(android: android, iOS: ios),
+        settings: const InitializationSettings(android: android, iOS: ios),
       );
       await _plugin
           .resolvePlatformSpecificImplementation<
@@ -73,11 +73,11 @@ class NotificationService {
         if (!whenUtc.isAfter(nowUtc)) continue; // skip if already past
 
         await _plugin.zonedSchedule(
-          i, // a stable id per day-offset
-          "Today's debate is live 🔥",
-          topic.topic,
-          whenUtc,
-          details,
+          id: i, // a stable id per day-offset
+          title: "Today's debate is live 🔥",
+          body: topic.topic,
+          scheduledDate: whenUtc,
+          notificationDetails: details,
           androidScheduleMode: AndroidScheduleMode.inexactAllowWhileIdle,
         );
       }
