@@ -27,12 +27,7 @@ class RoomService {
     return _rooms
         .where('createdBy', isEqualTo: userId)
         .snapshots()
-        .map((snap) {
-          final rooms = snap.docs.map(Room.fromDoc).toList();
-          // Sort by lastActivity on the client side to avoid composite index
-          rooms.sort((a, b) => b.lastActivity.compareTo(a.lastActivity));
-          return rooms;
-        });
+        .map((snap) => snap.docs.map(Room.fromDoc).toList());
   }
 
   /// Creates a room and returns its new id. For a private room, pass the raw

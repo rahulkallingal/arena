@@ -151,11 +151,9 @@ class _RoomDiscoveryScreenState extends State<RoomDiscoveryScreen> {
           return const Center(child: CircularProgressIndicator());
         }
 
-        var allRooms = snapshot.data?.docs.map((doc) {
+        final allRooms = snapshot.data?.docs.map((doc) {
           return Room.fromDoc(doc as DocumentSnapshot<Map<String, dynamic>>);
         }).toList() ?? [];
-        // Sort by lastActivity on client side to avoid composite index
-        allRooms.sort((a, b) => (b.lastActivity ?? DateTime(2000)).compareTo(a.lastActivity ?? DateTime(2000)));
 
         // Filter rooms - exclude user's own rooms
         var filteredRooms = allRooms
