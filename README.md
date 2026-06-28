@@ -33,9 +33,12 @@ shared_preferences; daily notifications via flutter_local_notifications.
 ## Repo layout
 - `lib/` — all the app code (see the folder map in `ARENA_CONTEXT.md`)
 - `firestore.rules` — paste into Firebase console → Firestore → Rules
-- `SETUP_WINDOWS.md` — how to build it
+- `SETUP_WINDOWS.md` — how to build it (one-time Firebase setup)
+- `TESTING.md` — put it on a phone (wireless or USB) and what to try
 - `ARENA_CONTEXT.md` — full context + roadmap (the source of truth)
 
 ## Progress log
 - **2026-06-28** — Stages 1–4 written (rooms, chat, stances, moderation, daily
   topic + notifications, search/filters). First push to GitHub. Not yet built.
+- **2026-06-28** — Added `TESTING.md`. Test phone (TECNO KM9) set up for
+  wireless adb; app not yet built/installed (needs Windows + Firebase setup).
