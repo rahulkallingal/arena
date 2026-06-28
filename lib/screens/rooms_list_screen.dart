@@ -123,7 +123,7 @@ class _RoomsListScreenState extends State<RoomsListScreen> {
           ),
           Expanded(
             child: StreamBuilder<List<Room>>(
-              stream: _rooms.watchRooms(),
+              stream: _rooms.watchMyRooms(_auth.currentUser!.uid),
               builder: (context, snapshot) {
                 if (snapshot.hasError) {
                   return const _Centered(
@@ -142,10 +142,10 @@ class _RoomsListScreenState extends State<RoomsListScreen> {
                     emoji: _query.isNotEmpty || _category != null ? '🔍' : '🗣️',
                     title: _query.isNotEmpty || _category != null
                         ? 'No rooms match'
-                        : 'No debates yet',
+                        : 'No rooms created yet',
                     subtitle: _query.isNotEmpty || _category != null
                         ? 'Try a different search or category.'
-                        : 'Be the first — tap "New room" to start one.',
+                        : 'Create a new debate room or discover rooms from others!',
                   );
                 }
                 return ListView.builder(

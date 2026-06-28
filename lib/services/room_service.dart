@@ -22,6 +22,15 @@ class RoomService {
         .map((snap) => snap.docs.map(Room.fromDoc).toList());
   }
 
+  /// Live list of rooms created by a specific user, newest activity first.
+  Stream<List<Room>> watchMyRooms(String userId) {
+    return _rooms
+        .where('createdBy', isEqualTo: userId)
+        .orderBy('lastActivity', descending: true)
+        .snapshots()
+        .map((snap) => snap.docs.map(Room.fromDoc).toList());
+  }
+
   /// Creates a room and returns its new id. For a private room, pass the raw
   /// [password]; we store only its hash.
   Future<String> createRoom({

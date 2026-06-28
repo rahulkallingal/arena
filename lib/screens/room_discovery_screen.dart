@@ -1,4 +1,5 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 import '../models/room.dart';
 import '../theme.dart';
@@ -134,6 +135,8 @@ class _RoomDiscoveryScreenState extends State<RoomDiscoveryScreen> {
   }
 
   Widget _buildRoomsList() {
+    final currentUserId = FirebaseAuth.instance.currentUser?.uid;
+
     return StreamBuilder<QuerySnapshot>(
       stream: FirebaseFirestore.instance
           .collection('rooms')
@@ -153,8 +156,10 @@ class _RoomDiscoveryScreenState extends State<RoomDiscoveryScreen> {
           return Room.fromDoc(doc as DocumentSnapshot<Map<String, dynamic>>);
         }).toList() ?? [];
 
-        // Filter rooms
-        var filteredRooms = allRooms;
+        // Filter rooms - exclude user's own rooms
+        var filteredRooms = allRooms
+            .where((room) => room.createdBy != currentUserId)
+            .toList();
 
         if (_selectedCategory != 'All') {
           filteredRooms = filteredRooms
