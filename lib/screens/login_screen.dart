@@ -171,6 +171,7 @@ class _LoginScreenState extends State<LoginScreen> {
                   TextField(
                     controller: _name,
                     textInputAction: TextInputAction.next,
+                    textCapitalization: TextCapitalization.words,
                     maxLength: 20,
                     onChanged: (_) {
                       if (_nameError != null) setState(() => _nameError = null);

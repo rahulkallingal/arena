@@ -2,6 +2,7 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import '../models/message.dart';
 import '../models/room.dart';
 import '../services/room_service.dart';
 import '../theme.dart';
@@ -67,17 +68,26 @@ class _JoinByCodeScreenState extends State<JoinByCodeScreen> {
 
       final room = Room.fromDoc(doc);
 
-      // Ask which side they're on before entering (same as other entry points).
+      // Use the side picked last time; only ask the first time in this room.
       if (!mounted) return;
       setState(() => _searching = false);
-      final stance = await pickJoinStance(context, topic: room.topic);
-      if (stance == null || !mounted) return;
-
-      // Remember this room under "Visited" so it shows in their history.
       final uid = FirebaseAuth.instance.currentUser?.uid;
+      Stance? stance;
       if (uid != null) {
         try {
-          await RoomService().recordJoin(uid, room);
+          stance = await RoomService().getStoredStance(uid, room.id);
+        } catch (_) {/* treat as not-yet-chosen */}
+      }
+      if (stance == null) {
+        if (!mounted) return;
+        stance = await pickJoinStance(context, topic: room.topic);
+        if (stance == null || !mounted) return;
+      }
+
+      // Remember this room under "Visited" so it shows in their history.
+      if (uid != null) {
+        try {
+          await RoomService().recordJoin(uid, room, stance: stance);
         } catch (_) {/* non-fatal */}
       }
 
@@ -86,7 +96,7 @@ class _JoinByCodeScreenState extends State<JoinByCodeScreen> {
       Navigator.pushReplacement(
         context,
         MaterialPageRoute(
-          builder: (_) => ChatRoomScreen(room: room, initialStance: stance),
+          builder: (_) => ChatRoomScreen(room: room, initialStance: stance!),
         ),
       );
     } catch (e) {

@@ -97,6 +97,7 @@ class _CreateRoomScreenState extends State<CreateRoomScreen> {
           TextField(
             controller: _name,
             maxLength: 50,
+            textCapitalization: TextCapitalization.words,
             decoration: const InputDecoration(
               hintText: 'e.g. Space Truthers',
             ),
@@ -108,6 +109,7 @@ class _CreateRoomScreenState extends State<CreateRoomScreen> {
             maxLength: 200,
             maxLines: 3,
             minLines: 2,
+            textCapitalization: TextCapitalization.sentences,
             decoration: const InputDecoration(
               hintText:
                   'e.g. If the moon landing was real, how did a glass visor '

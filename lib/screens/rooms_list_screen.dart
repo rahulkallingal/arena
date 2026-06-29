@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 
 import '../data/daily_topics.dart';
+import '../models/message.dart';
 import '../models/room.dart';
 import '../services/auth_service.dart';
 import '../services/daily_topic_service.dart';
@@ -44,14 +45,27 @@ class _RoomsListScreenState extends State<RoomsListScreen> {
     if (_openingDaily) return;
     setState(() => _openingDaily = true);
     try {
-      final room = await _daily.ensureTodayRoom(uid: _auth.currentUser!.uid);
+      final uid = _auth.currentUser!.uid;
+      final room = await _daily.ensureTodayRoom(uid: uid);
+      // Use the side picked last time; only ask the first time in this room.
+      Stance? stance;
+      try {
+        stance = await _rooms.getStoredStance(uid, room.id);
+      } catch (_) {/* treat as not-yet-chosen */}
+      if (stance == null) {
+        if (!mounted) return;
+        stance = await pickJoinStance(context, topic: room.topic);
+        if (stance == null) return; // cancelled
+      }
       // Remember the daily room under "Visited" too, like any other room.
       try {
-        await _rooms.recordJoin(_auth.currentUser!.uid, room);
+        await _rooms.recordJoin(uid, room, stance: stance);
       } catch (_) {/* non-fatal */}
       if (mounted) {
         Navigator.of(context).push(
-          MaterialPageRoute(builder: (_) => ChatRoomScreen(room: room)),
+          MaterialPageRoute(
+            builder: (_) => ChatRoomScreen(room: room, initialStance: stance!),
+          ),
         );
       }
     } catch (_) {
@@ -94,6 +108,26 @@ class _RoomsListScreenState extends State<RoomsListScreen> {
             tooltip: 'Sign out',
             icon: const Icon(Icons.logout),
             onPressed: () async {
+              final confirm = await showDialog<bool>(
+                context: context,
+                builder: (ctx) => AlertDialog(
+                  title: const Text('Log out?'),
+                  content: const Text(
+                      'Are you sure you want to log out of Arena?'),
+                  actions: [
+                    TextButton(
+                      onPressed: () => Navigator.pop(ctx, false),
+                      child: const Text('Cancel'),
+                    ),
+                    TextButton(
+                      onPressed: () => Navigator.pop(ctx, true),
+                      child: const Text('Log out',
+                          style: TextStyle(color: AppColors.primary)),
+                    ),
+                  ],
+                ),
+              );
+              if (confirm != true) return;
               await _auth.signOut();
               if (context.mounted) {
                 Navigator.of(context).pushReplacement(
@@ -209,17 +243,25 @@ class _RoomsListScreenState extends State<RoomsListScreen> {
       if (ok != true) return;
     }
     if (!mounted) return;
-    // Ask which side they're on before entering the debate.
-    final stance = await pickJoinStance(context, topic: room.topic);
-    if (stance == null || !mounted) return;
-    // Remember this room under "Joined" so they can come back easily.
+    final uid = _auth.currentUser!.uid;
+    // Use the side they picked last time; only ask the first time.
+    Stance? stance;
     try {
-      await _rooms.recordJoin(_auth.currentUser!.uid, room);
+      stance = await _rooms.getStoredStance(uid, room.id);
+    } catch (_) {/* treat as not-yet-chosen */}
+    if (stance == null) {
+      if (!mounted) return;
+      stance = await pickJoinStance(context, topic: room.topic);
+      if (stance == null || !mounted) return;
+    }
+    // Remember this room under "Visited" so they can come back easily.
+    try {
+      await _rooms.recordJoin(uid, room, stance: stance);
     } catch (_) {/* non-fatal */}
     if (!mounted) return;
     Navigator.of(context).push(
       MaterialPageRoute(
-        builder: (_) => ChatRoomScreen(room: room, initialStance: stance),
+        builder: (_) => ChatRoomScreen(room: room, initialStance: stance!),
       ),
     );
   }

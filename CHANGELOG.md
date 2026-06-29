@@ -2,6 +2,19 @@
 
 All notable changes to Arena will be documented in this file.
 
+## [1.2.0] - June 29, 2026
+
+### ✨ Improved
+- **Your side is remembered per room.** You're asked which side you're on only
+  the **first** time you enter a room. After that it defaults to the side you
+  chose. You can switch sides anytime with the **⇄ (For/Against/Watching)**
+  button in the room's top bar — your new choice is remembered too.
+- **Logout now asks for confirmation** ("Log out? Cancel / Log out") so you
+  don't get signed out by an accidental tap.
+- **Auto-capitalised first letter** on name fields (display name, room name)
+  and the debate topic, so entries start with a capital by default. Email and
+  password are left untouched.
+
 ## [1.1.0] - June 29, 2026
 
 ### 🐞 Fixed

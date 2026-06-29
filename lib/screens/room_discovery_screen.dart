@@ -1,6 +1,7 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
+import '../models/message.dart';
 import '../models/room.dart';
 import '../services/room_service.dart';
 import '../theme.dart';
@@ -22,21 +23,31 @@ class _RoomDiscoveryScreenState extends State<RoomDiscoveryScreen> {
   String _selectedCategory = 'All';
   bool _showTrending = true;
 
-  /// Asks the user's side, records the join, then opens the debate.
+  /// Uses the side picked last time (asks only the first time), records the
+  /// join, then opens the debate.
   Future<void> _openRoom(Room room) async {
-    final stance = await pickJoinStance(context, topic: room.topic);
-    if (stance == null || !mounted) return;
     final uid = FirebaseAuth.instance.currentUser?.uid;
+    Stance? stance;
     if (uid != null) {
       try {
-        await _roomService.recordJoin(uid, room);
+        stance = await _roomService.getStoredStance(uid, room.id);
+      } catch (_) {/* treat as not-yet-chosen */}
+    }
+    if (stance == null) {
+      if (!mounted) return;
+      stance = await pickJoinStance(context, topic: room.topic);
+      if (stance == null || !mounted) return;
+    }
+    if (uid != null) {
+      try {
+        await _roomService.recordJoin(uid, room, stance: stance);
       } catch (_) {/* non-fatal */}
     }
     if (!mounted) return;
     Navigator.push(
       context,
       MaterialPageRoute(
-        builder: (_) => ChatRoomScreen(room: room, initialStance: stance),
+        builder: (_) => ChatRoomScreen(room: room, initialStance: stance!),
       ),
     );
   }

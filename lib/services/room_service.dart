@@ -129,9 +129,11 @@ class RoomService {
   CollectionReference<Map<String, dynamic>> _joinedCol(String userId) =>
       _db.collection('users').doc(userId).collection('joinedRooms');
 
-  /// Records that [userId] has joined [room] (so it shows under "Joined").
+  /// Records that [userId] has joined [room] (so it shows under "Visited").
   /// Stores a denormalized snapshot so the list renders without extra reads.
-  Future<void> recordJoin(String userId, Room room) async {
+  /// If [stance] is given it is remembered for next time; merge means an
+  /// existing stance is never wiped by a re-join that omits it.
+  Future<void> recordJoin(String userId, Room room, {Stance? stance}) async {
     await _joinedCol(userId).doc(room.id).set({
       'roomId': room.id,
       'name': room.name,
@@ -141,7 +143,26 @@ class RoomService {
       'createdBy': room.createdBy,
       'createdByName': room.createdByName,
       'joinedAt': FieldValue.serverTimestamp(),
+      if (stance != null) 'stance': stance.name,
     }, SetOptions(merge: true));
+  }
+
+  /// The stance [userId] previously chose for [roomId], or null if they have
+  /// never picked a side in this room yet.
+  Future<Stance?> getStoredStance(String userId, String roomId) async {
+    final doc = await _joinedCol(userId).doc(roomId).get();
+    final name = doc.data()?['stance'];
+    if (name == null) return null;
+    return Stance.values.firstWhere((s) => s.name == name,
+        orElse: () => Stance.neutral);
+  }
+
+  /// Updates the remembered stance for a room the user is already in.
+  Future<void> setStance(String userId, String roomId, Stance stance) async {
+    await _joinedCol(userId).doc(roomId).set(
+      {'stance': stance.name},
+      SetOptions(merge: true),
+    );
   }
 
   /// Live list of rooms the user has joined, most recently joined first.

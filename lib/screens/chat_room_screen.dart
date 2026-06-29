@@ -6,6 +6,7 @@ import '../services/auth_service.dart';
 import '../services/moderation_service.dart';
 import '../services/room_service.dart';
 import '../theme.dart';
+import '../widgets/join_stance_dialog.dart';
 import '../widgets/message_bubble.dart';
 
 /// The live debate. Shows the topic at the top, the running conversation, and
@@ -34,7 +35,7 @@ class _ChatRoomScreenState extends State<ChatRoomScreen> {
   final _auth = AuthService();
   final _moderation = ModerationService();
 
-  late final Stance _stance = widget.initialStance;
+  late Stance _stance = widget.initialStance;
   bool _sending = false;
   Set<String> _blocked = {};
   Message? _replyingTo; // the message currently being replied to, if any
@@ -64,6 +65,20 @@ class _ChatRoomScreenState extends State<ChatRoomScreen> {
   Future<void> _loadBlocked() async {
     final blocked = await _moderation.loadBlocked();
     if (mounted) setState(() => _blocked = blocked);
+  }
+
+  /// Lets the user deliberately switch the side they're arguing. The new
+  /// choice is remembered for this room (so next time it's the default).
+  Future<void> _changeStance() async {
+    final picked = await pickJoinStance(context, topic: widget.room.topic);
+    if (picked == null || picked == _stance || !mounted) return;
+    setState(() => _stance = picked);
+    final uid = _auth.currentUser?.uid;
+    if (uid != null) {
+      try {
+        await _rooms.setStance(uid, widget.room.id, picked);
+      } catch (_) {/* non-fatal */}
+    }
   }
 
   @override
@@ -221,6 +236,21 @@ class _ChatRoomScreenState extends State<ChatRoomScreen> {
             ),
           ],
         ),
+        actions: [
+          TextButton.icon(
+            onPressed: _changeStance,
+            icon: const Icon(Icons.swap_horiz, color: Colors.white, size: 18),
+            label: Text(
+              _stance == Stance.forSide
+                  ? 'For'
+                  : _stance == Stance.againstSide
+                      ? 'Against'
+                      : 'Watching',
+              style: const TextStyle(
+                  color: Colors.white, fontWeight: FontWeight.w600),
+            ),
+          ),
+        ],
       ),
       body: Column(
         children: [
@@ -402,12 +432,9 @@ class _InputBar extends StatelessWidget {
               children: [
                 _StanceBadge(stance: stance),
                 const Spacer(),
-                Text(
-                  stance == Stance.neutral
-                      ? 'Watching'
-                      : 'Your side is locked',
-                  style: const TextStyle(
-                      fontSize: 11, color: AppColors.textGrey),
+                const Text(
+                  'Tap ⇄ above to switch side',
+                  style: TextStyle(fontSize: 11, color: AppColors.textGrey),
                 ),
               ],
             ),
@@ -457,8 +484,9 @@ class _InputBar extends StatelessWidget {
   }
 }
 
-/// A read-only badge showing the side the user chose when they entered the
-/// room. The stance is fixed at entry and cannot be changed while debating.
+/// A badge showing the side the user is currently arguing. It defaults to the
+/// side chosen on entry (remembered per room) and updates when they switch
+/// sides via the control in the app bar.
 class _StanceBadge extends StatelessWidget {
   final Stance stance;
 
@@ -478,20 +506,13 @@ class _StanceBadge extends StatelessWidget {
         borderRadius: BorderRadius.circular(20),
         border: Border.all(color: color),
       ),
-      child: Row(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          Icon(Icons.lock_outline, size: 13, color: color),
-          const SizedBox(width: 5),
-          Text(
-            label,
-            style: TextStyle(
-              color: color,
-              fontWeight: FontWeight.w700,
-              fontSize: 13,
-            ),
-          ),
-        ],
+      child: Text(
+        label,
+        style: TextStyle(
+          color: color,
+          fontWeight: FontWeight.w700,
+          fontSize: 13,
+        ),
       ),
     );
   }
