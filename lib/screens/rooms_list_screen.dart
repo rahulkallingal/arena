@@ -45,6 +45,10 @@ class _RoomsListScreenState extends State<RoomsListScreen> {
     setState(() => _openingDaily = true);
     try {
       final room = await _daily.ensureTodayRoom(uid: _auth.currentUser!.uid);
+      // Remember the daily room under "Visited" too, like any other room.
+      try {
+        await _rooms.recordJoin(_auth.currentUser!.uid, room);
+      } catch (_) {/* non-fatal */}
       if (mounted) {
         Navigator.of(context).push(
           MaterialPageRoute(builder: (_) => ChatRoomScreen(room: room)),
@@ -170,12 +174,13 @@ class _RoomsListScreenState extends State<RoomsListScreen> {
                     title: filtering
                         ? 'No rooms match'
                         : (_showJoined
-                            ? 'No joined rooms yet'
+                            ? 'No visited rooms yet'
                             : 'No rooms created yet'),
                     subtitle: filtering
                         ? 'Try a different search or category.'
                         : (_showJoined
-                            ? 'Rooms you join from Discover will show up here.'
+                            ? 'Rooms you open will show up here, so you can '
+                                'jump back in any time.'
                             : 'Create a new debate room or discover rooms from others!'),
                   );
                 }
@@ -287,7 +292,7 @@ class _RoomsToggle extends StatelessWidget {
         children: [
           _seg('My Rooms', !showJoined, () => onChanged(false)),
           const SizedBox(width: 8),
-          _seg('Joined', showJoined, () => onChanged(true)),
+          _seg('Visited', showJoined, () => onChanged(true)),
         ],
       ),
     );

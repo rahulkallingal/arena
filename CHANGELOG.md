@@ -2,6 +2,18 @@
 
 All notable changes to Arena will be documented in this file.
 
+## [1.0.9] - June 29, 2026
+
+### ✨ Improved
+- **Topics rewritten in plain, simple words** so anyone can understand and join
+  in, whatever their reading level (e.g. "Should there be term limits for
+  judges?" → "Should judges be made to leave their job after some years,
+  instead of staying for life?"). Still 365, one per day for a full year.
+- **"Visited" rooms history:** the home toggle's "Joined" tab is now **Visited**
+  and records *every* room you open — including the daily Topic of the Day —
+  most recent first, kept separate from the rooms you created ("My Rooms"). So
+  you have a real history of rooms you've been in.
+
 ## [1.0.8] - June 29, 2026
 
 ### ✨ Added
