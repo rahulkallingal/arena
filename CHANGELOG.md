@@ -2,6 +2,19 @@
 
 All notable changes to Arena will be documented in this file.
 
+## [1.3.0] - June 29, 2026
+
+### ✨ Added
+- **Remove a room from your own list without deleting it.** Long-press a room
+  in **My Rooms** → "Remove from my list" — it disappears from your list but
+  the room keeps existing so anyone still chatting there is unaffected. Long-
+  press in **Visited** to remove it from your history. Both have an Undo.
+
+### 🔐 Fixed
+- **Terms & Conditions are now enforced for Google sign-in too** — the
+  "Continue with Google" button stays disabled until the agreement box is
+  ticked (matches Create account).
+
 ## [1.2.0] - June 29, 2026
 
 ### ✨ Improved

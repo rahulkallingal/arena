@@ -8,8 +8,14 @@ import '../theme.dart';
 class RoomCard extends StatelessWidget {
   final Room room;
   final VoidCallback onTap;
+  final VoidCallback? onLongPress;
 
-  const RoomCard({super.key, required this.room, required this.onTap});
+  const RoomCard({
+    super.key,
+    required this.room,
+    required this.onTap,
+    this.onLongPress,
+  });
 
   @override
   Widget build(BuildContext context) {
@@ -24,6 +30,7 @@ class RoomCard extends StatelessWidget {
       child: InkWell(
         borderRadius: BorderRadius.circular(16),
         onTap: onTap,
+        onLongPress: onLongPress,
         child: Padding(
           padding: const EdgeInsets.all(16),
           child: Column(

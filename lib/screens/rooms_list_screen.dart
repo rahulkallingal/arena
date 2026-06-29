@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 
 import '../data/daily_topics.dart';
@@ -35,8 +37,23 @@ class _RoomsListScreenState extends State<RoomsListScreen> {
   bool _showJoined = false; // false = rooms I created, true = rooms I joined
   bool _hideVerifyBanner = false;
 
+  Set<String> _hidden = {}; // rooms the user removed from their own list
+  StreamSubscription<Set<String>>? _hiddenSub;
+
+  @override
+  void initState() {
+    super.initState();
+    final uid = _auth.currentUser?.uid;
+    if (uid != null) {
+      _hiddenSub = _rooms.watchHiddenRoomIds(uid).listen((ids) {
+        if (mounted) setState(() => _hidden = ids);
+      });
+    }
+  }
+
   @override
   void dispose() {
+    _hiddenSub?.cancel();
     _searchController.dispose();
     super.dispose();
   }
@@ -81,6 +98,8 @@ class _RoomsListScreenState extends State<RoomsListScreen> {
 
   bool _matchesFilters(Room room) {
     if (room.isDaily) return false; // shown in the featured card instead
+    // In "My Rooms", hide rooms the user removed from their own list.
+    if (!_showJoined && _hidden.contains(room.id)) return false;
     if (_category != null && room.category != _category) return false;
     if (_query.isEmpty) return true;
     final q = _query.toLowerCase();
@@ -226,6 +245,7 @@ class _RoomsListScreenState extends State<RoomsListScreen> {
                     return RoomCard(
                       room: room,
                       onTap: () => _openRoom(room),
+                      onLongPress: () => _roomCardMenu(room),
                     );
                   },
                 );
@@ -264,6 +284,77 @@ class _RoomsListScreenState extends State<RoomsListScreen> {
         builder: (_) => ChatRoomScreen(room: room, initialStance: stance!),
       ),
     );
+  }
+
+  /// Long-press menu on a room card. In "My Rooms" the creator can remove the
+  /// room from their own list (the room keeps existing for everyone else); in
+  /// "Visited" they can remove it from their history.
+  Future<void> _roomCardMenu(Room room) async {
+    final uid = _auth.currentUser!.uid;
+    final isVisited = _showJoined;
+    final choice = await showModalBottomSheet<String>(
+      context: context,
+      builder: (ctx) => SafeArea(
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Padding(
+              padding: const EdgeInsets.fromLTRB(20, 16, 20, 4),
+              child: Text(room.name,
+                  style: const TextStyle(
+                      fontWeight: FontWeight.bold, fontSize: 16)),
+            ),
+            ListTile(
+              leading: const Icon(Icons.playlist_remove),
+              title: Text(isVisited
+                  ? 'Remove from Visited'
+                  : 'Remove from my list'),
+              subtitle: const Text(
+                  "This won't delete the room — others can still chat in it."),
+              onTap: () => Navigator.pop(ctx, 'remove'),
+            ),
+            ListTile(
+              leading: const Icon(Icons.close),
+              title: const Text('Cancel'),
+              onTap: () => Navigator.pop(ctx, null),
+            ),
+          ],
+        ),
+      ),
+    );
+    if (choice != 'remove') return;
+    try {
+      if (isVisited) {
+        await _rooms.removeVisited(uid, room.id);
+      } else {
+        await _rooms.hideRoom(uid, room.id);
+      }
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(isVisited
+                ? 'Removed from Visited'
+                : 'Removed from your list'),
+            action: SnackBarAction(
+              label: 'Undo',
+              onPressed: () async {
+                if (isVisited) {
+                  await _rooms.recordJoin(uid, room);
+                } else {
+                  await _rooms.unhideRoom(uid, room.id);
+                }
+              },
+            ),
+          ),
+        );
+      }
+    } catch (_) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Could not update your list.')),
+        );
+      }
+    }
   }
 
   Future<bool?> _askPassword(Room room) {

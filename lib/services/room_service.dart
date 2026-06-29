@@ -165,6 +165,35 @@ class RoomService {
     );
   }
 
+  /// Removes a room from this user's "Visited" list (does not delete the room).
+  Future<void> removeVisited(String userId, String roomId) async {
+    await _joinedCol(userId).doc(roomId).delete();
+  }
+
+  // ---- Hidden rooms (creator removes a room from their own list) ---------
+  CollectionReference<Map<String, dynamic>> _hiddenCol(String userId) =>
+      _db.collection('users').doc(userId).collection('hiddenRooms');
+
+  /// Hides [roomId] from this user's "My Rooms" list WITHOUT deleting the room,
+  /// so anyone still chatting there is unaffected.
+  Future<void> hideRoom(String userId, String roomId) async {
+    await _hiddenCol(userId).doc(roomId).set(
+      {'hiddenAt': FieldValue.serverTimestamp()},
+    );
+  }
+
+  /// Brings a previously hidden room back into the user's list.
+  Future<void> unhideRoom(String userId, String roomId) async {
+    await _hiddenCol(userId).doc(roomId).delete();
+  }
+
+  /// Live set of room ids this user has hidden from their own list.
+  Stream<Set<String>> watchHiddenRoomIds(String userId) {
+    return _hiddenCol(userId)
+        .snapshots()
+        .map((snap) => snap.docs.map((d) => d.id).toSet());
+  }
+
   /// Live list of rooms the user has joined, most recently joined first.
   Stream<List<Room>> watchJoinedRooms(String userId) {
     return _joinedCol(userId)
