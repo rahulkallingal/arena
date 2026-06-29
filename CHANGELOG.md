@@ -2,6 +2,16 @@
 
 All notable changes to Arena will be documented in this file.
 
+## [1.0.3] - June 29, 2026
+
+### 🐞 Fixed
+- **Share Room dialog** showed empty Room ID and Share Link fields (and the
+  Copy buttons were missing). Rebuilt the value rows as a full-width Column
+  with `SelectableText` + a Copy button below each, so the room ID and link
+  always render. Verified on device.
+- `firestore.rules`: added owner-only access to `users/{uid}/**` so PetBloom
+  (same Firebase project) can store per-user data without affecting Arena.
+
 ## [1.0.2] - June 28, 2026
 
 ### ✨ Fixed

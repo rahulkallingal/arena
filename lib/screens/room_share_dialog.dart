@@ -46,7 +46,7 @@ class _RoomShareDialogState extends State<RoomShareDialog> {
   Widget build(BuildContext context) {
     return Dialog(
       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-      child: Padding(
+      child: SingleChildScrollView(
         padding: const EdgeInsets.all(24),
         child: Column(
           mainAxisSize: MainAxisSize.min,
@@ -88,45 +88,12 @@ class _RoomShareDialogState extends State<RoomShareDialog> {
               ),
             ),
             const SizedBox(height: 8),
-            Container(
-              padding: const EdgeInsets.all(12),
-              decoration: BoxDecoration(
-                color: Colors.grey[100],
-                borderRadius: BorderRadius.circular(8),
-                border: Border.all(color: AppColors.border),
-              ),
-              child: Row(
-                children: [
-                  Expanded(
-                    child: Text(
-                      widget.room.id,
-                      style: const TextStyle(
-                        fontFamily: 'monospace',
-                        fontSize: 14,
-                        fontWeight: FontWeight.w600,
-                      ),
-                      overflow: TextOverflow.ellipsis,
-                    ),
-                  ),
-                  const SizedBox(width: 8),
-                  ElevatedButton.icon(
-                    onPressed: () =>
-                        _copyToClipboard(widget.room.id, isLink: false),
-                    icon: Icon(
-                      _copiedId ? Icons.check : Icons.copy,
-                      size: 18,
-                    ),
-                    label: Text(_copiedId ? 'Copied' : 'Copy'),
-                    style: ElevatedButton.styleFrom(
-                      backgroundColor: _copiedId ? Colors.green : AppColors.primary,
-                      padding: const EdgeInsets.symmetric(
-                        horizontal: 12,
-                        vertical: 8,
-                      ),
-                    ),
-                  ),
-                ],
-              ),
+            _valueBox(
+              value: widget.room.id,
+              monospaceSize: 14,
+              color: AppColors.textDark,
+              copied: _copiedId,
+              onCopy: () => _copyToClipboard(widget.room.id, isLink: false),
             ),
             const SizedBox(height: 24),
 
@@ -139,45 +106,12 @@ class _RoomShareDialogState extends State<RoomShareDialog> {
               ),
             ),
             const SizedBox(height: 8),
-            Container(
-              padding: const EdgeInsets.all(12),
-              decoration: BoxDecoration(
-                color: Colors.grey[100],
-                borderRadius: BorderRadius.circular(8),
-                border: Border.all(color: AppColors.border),
-              ),
-              child: Row(
-                children: [
-                  Expanded(
-                    child: Text(
-                      _roomLink,
-                      style: const TextStyle(
-                        fontFamily: 'monospace',
-                        fontSize: 12,
-                        color: AppColors.primary,
-                      ),
-                      overflow: TextOverflow.ellipsis,
-                    ),
-                  ),
-                  const SizedBox(width: 8),
-                  ElevatedButton.icon(
-                    onPressed: () => _copyToClipboard(_roomLink, isLink: true),
-                    icon: Icon(
-                      _copiedLink ? Icons.check : Icons.copy,
-                      size: 18,
-                    ),
-                    label: Text(_copiedLink ? 'Copied' : 'Copy'),
-                    style: ElevatedButton.styleFrom(
-                      backgroundColor:
-                          _copiedLink ? Colors.green : AppColors.primary,
-                      padding: const EdgeInsets.symmetric(
-                        horizontal: 12,
-                        vertical: 8,
-                      ),
-                    ),
-                  ),
-                ],
-              ),
+            _valueBox(
+              value: _roomLink,
+              monospaceSize: 12,
+              color: AppColors.primary,
+              copied: _copiedLink,
+              onCopy: () => _copyToClipboard(_roomLink, isLink: true),
             ),
             const SizedBox(height: 24),
 
@@ -212,6 +146,56 @@ class _RoomShareDialogState extends State<RoomShareDialog> {
             ),
           ],
         ),
+      ),
+    );
+  }
+
+  /// A full-width box that shows a selectable value with a Copy button below it.
+  /// Laid out as a Column (not a Row with Expanded) so it always renders the
+  /// value and the button regardless of available width.
+  Widget _valueBox({
+    required String value,
+    required double monospaceSize,
+    required Color color,
+    required bool copied,
+    required VoidCallback onCopy,
+  }) {
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.all(12),
+      decoration: BoxDecoration(
+        color: Colors.grey[100],
+        borderRadius: BorderRadius.circular(8),
+        border: Border.all(color: AppColors.border),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          SelectableText(
+            value.isEmpty ? '—' : value,
+            style: TextStyle(
+              fontFamily: 'monospace',
+              fontSize: monospaceSize,
+              fontWeight: FontWeight.w600,
+              color: color,
+            ),
+          ),
+          const SizedBox(height: 10),
+          Align(
+            alignment: Alignment.centerRight,
+            child: ElevatedButton.icon(
+              onPressed: onCopy,
+              icon: Icon(copied ? Icons.check : Icons.copy, size: 18),
+              label: Text(copied ? 'Copied' : 'Copy'),
+              style: ElevatedButton.styleFrom(
+                foregroundColor: Colors.white,
+                backgroundColor: copied ? Colors.green : AppColors.primary,
+                padding:
+                    const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
+              ),
+            ),
+          ),
+        ],
       ),
     );
   }
