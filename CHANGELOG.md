@@ -2,6 +2,13 @@
 
 All notable changes to Arena will be documented in this file.
 
+## [1.0.5] - June 29, 2026
+
+### ✨ Added
+- **Reply to a message:** long-press any message → Reply. A quoted preview of
+  the original (sender + text) sits above your input while composing and is
+  shown at the top of the sent message, so rebuttals are easy to follow.
+
 ## [1.0.4] - June 29, 2026
 
 ### ✨ Added / improved

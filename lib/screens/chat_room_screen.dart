@@ -37,6 +37,7 @@ class _ChatRoomScreenState extends State<ChatRoomScreen> {
   late Stance _stance = widget.initialStance;
   bool _sending = false;
   Set<String> _blocked = {};
+  Message? _replyingTo; // the message currently being replied to, if any
 
   @override
   void initState() {
@@ -84,8 +85,10 @@ class _ChatRoomScreenState extends State<ChatRoomScreen> {
         senderId: user.uid,
         senderName: _auth.displayName,
         stance: _stance,
+        replyTo: _replyingTo,
       );
       _input.clear();
+      if (mounted) setState(() => _replyingTo = null);
     } catch (_) {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
@@ -116,6 +119,14 @@ class _ChatRoomScreenState extends State<ChatRoomScreen> {
           child: Column(
             mainAxisSize: MainAxisSize.min,
             children: [
+              ListTile(
+                leading: const Icon(Icons.reply, color: AppColors.secondary),
+                title: const Text('Reply'),
+                onTap: () {
+                  Navigator.pop(sheetContext);
+                  setState(() => _replyingTo = m);
+                },
+              ),
               if (isMine)
                 ListTile(
                   leading: const Icon(Icons.delete_outline,
@@ -263,12 +274,66 @@ class _ChatRoomScreenState extends State<ChatRoomScreen> {
               },
             ),
           ),
+          if (_replyingTo != null)
+            _ReplyPreviewBar(
+              message: _replyingTo!,
+              onCancel: () => setState(() => _replyingTo = null),
+            ),
           _InputBar(
             controller: _input,
             stance: _stance,
             sending: _sending,
             onStanceChanged: (s) => setState(() => _stance = s),
             onSend: _send,
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+/// Sits above the input while composing a reply, showing what's being quoted.
+class _ReplyPreviewBar extends StatelessWidget {
+  final Message message;
+  final VoidCallback onCancel;
+  const _ReplyPreviewBar({required this.message, required this.onCancel});
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      color: AppColors.card,
+      padding: const EdgeInsets.fromLTRB(12, 8, 4, 8),
+      child: Row(
+        children: [
+          Container(width: 3, height: 36, color: AppColors.secondary),
+          const SizedBox(width: 10),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Text(
+                  'Replying to ${message.senderName}',
+                  style: const TextStyle(
+                    fontSize: 12,
+                    fontWeight: FontWeight.w700,
+                    color: AppColors.secondary,
+                  ),
+                ),
+                const SizedBox(height: 2),
+                Text(
+                  message.text,
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: const TextStyle(
+                      fontSize: 13, color: AppColors.textGrey),
+                ),
+              ],
+            ),
+          ),
+          IconButton(
+            icon: const Icon(Icons.close, size: 20),
+            onPressed: onCancel,
           ),
         ],
       ),

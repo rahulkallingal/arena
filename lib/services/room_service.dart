@@ -74,12 +74,14 @@ class RoomService {
   }
 
   /// Sends a message and bumps the room's lastActivity so it floats to the top.
+  /// Pass [replyTo] to quote another message.
   Future<void> sendMessage({
     required String roomId,
     required String text,
     required String senderId,
     required String senderName,
     required Stance stance,
+    Message? replyTo,
   }) async {
     final message = Message(
       id: '',
@@ -87,6 +89,9 @@ class RoomService {
       senderId: senderId,
       senderName: senderName,
       stance: stance,
+      replyToId: replyTo?.id,
+      replyToText: replyTo?.text,
+      replyToSender: replyTo?.senderName,
     );
     final batch = _db.batch();
     final msgRef = _rooms.doc(roomId).collection('messages').doc();

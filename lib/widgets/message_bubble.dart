@@ -115,6 +115,10 @@ class MessageBubble extends StatelessWidget {
                       crossAxisAlignment: CrossAxisAlignment.start,
                       mainAxisSize: MainAxisSize.min,
                       children: [
+                        if (message.isReply) ...[
+                          _QuotedReply(message: message, onDark: isMine),
+                          const SizedBox(height: 6),
+                        ],
                         if (message.stance != Stance.neutral) ...[
                           _StanceTag(stance: message.stance, onDark: isMine),
                           const SizedBox(height: 4),
@@ -175,6 +179,51 @@ class MessageBubble extends StatelessWidget {
       icon: const Icon(Icons.add_reaction_outlined,
           size: 18, color: AppColors.textGrey),
       onPressed: () => _openReactionPicker(context),
+    );
+  }
+}
+
+/// The quoted message shown at the top of a reply bubble.
+class _QuotedReply extends StatelessWidget {
+  final Message message;
+  final bool onDark; // sitting on my own (red) bubble
+  const _QuotedReply({required this.message, required this.onDark});
+
+  @override
+  Widget build(BuildContext context) {
+    final bg = onDark
+        ? Colors.white.withValues(alpha: 0.18)
+        : AppColors.background;
+    final accent = onDark ? Colors.white : AppColors.secondary;
+    final bodyColor = onDark ? Colors.white70 : AppColors.textGrey;
+    return Container(
+      padding: const EdgeInsets.fromLTRB(8, 6, 8, 6),
+      decoration: BoxDecoration(
+        color: bg,
+        borderRadius: BorderRadius.circular(8),
+        border: Border(left: BorderSide(color: accent, width: 3)),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Text(
+            message.replyToSender ?? 'Someone',
+            style: TextStyle(
+              fontSize: 11,
+              fontWeight: FontWeight.w700,
+              color: accent,
+            ),
+          ),
+          const SizedBox(height: 1),
+          Text(
+            message.replyToText ?? '',
+            maxLines: 2,
+            overflow: TextOverflow.ellipsis,
+            style: TextStyle(fontSize: 12, color: bodyColor),
+          ),
+        ],
+      ),
     );
   }
 }

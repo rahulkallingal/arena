@@ -19,6 +19,11 @@ class Message {
   /// user; changing it overwrites the previous one.
   final Map<String, String> reactions;
 
+  /// If this message is a reply, the id/snippet/sender of the message it quotes.
+  final String? replyToId;
+  final String? replyToText;
+  final String? replyToSender;
+
   Message({
     required this.id,
     required this.text,
@@ -27,7 +32,12 @@ class Message {
     this.stance = Stance.neutral,
     this.createdAt,
     this.reactions = const {},
+    this.replyToId,
+    this.replyToText,
+    this.replyToSender,
   });
+
+  bool get isReply => replyToId != null;
 
   factory Message.fromDoc(DocumentSnapshot<Map<String, dynamic>> doc) {
     final d = doc.data() ?? {};
@@ -40,6 +50,9 @@ class Message {
       stance: _stanceFromString(d['stance']),
       createdAt: (d['createdAt'] as Timestamp?)?.toDate(),
       reactions: rawReactions.map((k, v) => MapEntry(k, v.toString())),
+      replyToId: d['replyToId'],
+      replyToText: d['replyToText'],
+      replyToSender: d['replyToSender'],
     );
   }
 
@@ -62,6 +75,9 @@ class Message {
         'stance': stance.name,
         'createdAt': FieldValue.serverTimestamp(),
         'reactions': <String, String>{},
+        if (replyToId != null) 'replyToId': replyToId,
+        if (replyToText != null) 'replyToText': replyToText,
+        if (replyToSender != null) 'replyToSender': replyToSender,
       };
 
   static Stance _stanceFromString(dynamic value) {
