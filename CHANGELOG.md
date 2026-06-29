@@ -2,6 +2,16 @@
 
 All notable changes to Arena will be documented in this file.
 
+## [1.0.8] - June 29, 2026
+
+### ✨ Added
+- **365 daily debate topics** (up from ~44): a full year of provocative,
+  reply-tempting questions — dilemmas, paradoxes and classic debates across
+  Science, Religion/Philosophy, Movies, Politics, Sports, Technology, History
+  and "Other" (ethics dilemmas + harmless conspiracy prompts). Topics now go a
+  whole year before any repeat. Still chosen deterministically from the date,
+  so every phone shows the same topic each day with no server.
+
 ## [1.0.7] - June 29, 2026
 
 ### ✨ Added
