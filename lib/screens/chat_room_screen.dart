@@ -34,7 +34,7 @@ class _ChatRoomScreenState extends State<ChatRoomScreen> {
   final _auth = AuthService();
   final _moderation = ModerationService();
 
-  late Stance _stance = widget.initialStance;
+  late final Stance _stance = widget.initialStance;
   bool _sending = false;
   Set<String> _blocked = {};
   Message? _replyingTo; // the message currently being replied to, if any
@@ -283,7 +283,6 @@ class _ChatRoomScreenState extends State<ChatRoomScreen> {
             controller: _input,
             stance: _stance,
             sending: _sending,
-            onStanceChanged: (s) => setState(() => _stance = s),
             onSend: _send,
           ),
         ],
@@ -377,14 +376,12 @@ class _InputBar extends StatelessWidget {
   final TextEditingController controller;
   final Stance stance;
   final bool sending;
-  final ValueChanged<Stance> onStanceChanged;
   final VoidCallback onSend;
 
   const _InputBar({
     required this.controller,
     required this.stance,
     required this.sending,
-    required this.onStanceChanged,
     required this.onSend,
   });
 
@@ -403,26 +400,15 @@ class _InputBar extends StatelessWidget {
           children: [
             Row(
               children: [
-                _StanceChip(
-                  label: 'For',
-                  color: AppColors.forSide,
-                  selected: stance == Stance.forSide,
-                  onTap: () => onStanceChanged(
-                      stance == Stance.forSide ? Stance.neutral : Stance.forSide),
-                ),
-                const SizedBox(width: 8),
-                _StanceChip(
-                  label: 'Against',
-                  color: AppColors.againstSide,
-                  selected: stance == Stance.againstSide,
-                  onTap: () => onStanceChanged(stance == Stance.againstSide
-                      ? Stance.neutral
-                      : Stance.againstSide),
-                ),
+                _StanceBadge(stance: stance),
                 const Spacer(),
-                if (stance != Stance.neutral)
-                  const Text('Stance set',
-                      style: TextStyle(fontSize: 11, color: AppColors.textGrey)),
+                Text(
+                  stance == Stance.neutral
+                      ? 'Watching'
+                      : 'Your side is locked',
+                  style: const TextStyle(
+                      fontSize: 11, color: AppColors.textGrey),
+                ),
               ],
             ),
             const SizedBox(height: 8),
@@ -471,38 +457,41 @@ class _InputBar extends StatelessWidget {
   }
 }
 
-class _StanceChip extends StatelessWidget {
-  final String label;
-  final Color color;
-  final bool selected;
-  final VoidCallback onTap;
+/// A read-only badge showing the side the user chose when they entered the
+/// room. The stance is fixed at entry and cannot be changed while debating.
+class _StanceBadge extends StatelessWidget {
+  final Stance stance;
 
-  const _StanceChip({
-    required this.label,
-    required this.color,
-    required this.selected,
-    required this.onTap,
-  });
+  const _StanceBadge({required this.stance});
 
   @override
   Widget build(BuildContext context) {
-    return GestureDetector(
-      onTap: onTap,
-      child: Container(
-        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 6),
-        decoration: BoxDecoration(
-          color: selected ? color : color.withValues(alpha: 0.12),
-          borderRadius: BorderRadius.circular(20),
-          border: Border.all(color: color),
-        ),
-        child: Text(
-          label,
-          style: TextStyle(
-            color: selected ? Colors.white : color,
-            fontWeight: FontWeight.w700,
-            fontSize: 13,
+    final (label, color) = switch (stance) {
+      Stance.forSide => ('Arguing: For', AppColors.forSide),
+      Stance.againstSide => ('Arguing: Against', AppColors.againstSide),
+      Stance.neutral => ('Just watching', AppColors.textGrey),
+    };
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 6),
+      decoration: BoxDecoration(
+        color: color.withValues(alpha: 0.12),
+        borderRadius: BorderRadius.circular(20),
+        border: Border.all(color: color),
+      ),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Icon(Icons.lock_outline, size: 13, color: color),
+          const SizedBox(width: 5),
+          Text(
+            label,
+            style: TextStyle(
+              color: color,
+              fontWeight: FontWeight.w700,
+              fontSize: 13,
+            ),
           ),
-        ),
+        ],
       ),
     );
   }

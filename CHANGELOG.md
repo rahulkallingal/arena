@@ -2,6 +2,17 @@
 
 All notable changes to Arena will be documented in this file.
 
+## [1.1.0] - June 29, 2026
+
+### 🐞 Fixed
+- **Your side is now locked once you enter a room.** Before, the For/Against
+  chips in the message bar could still be tapped to switch sides mid-debate.
+  Now the side you pick when joining is shown as a read-only badge (🔒 Arguing:
+  For / Against / Just watching) and can't be changed.
+- **Rooms joined by code/link now appear under "Visited."** Entering a room via
+  Join by Code now also asks your side and records the room in your history,
+  just like every other way of opening a room.
+
 ## [1.0.9] - June 29, 2026
 
 ### ✨ Improved

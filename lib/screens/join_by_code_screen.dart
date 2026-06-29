@@ -1,8 +1,11 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import '../models/room.dart';
+import '../services/room_service.dart';
 import '../theme.dart';
+import '../widgets/join_stance_dialog.dart';
 import 'chat_room_screen.dart';
 
 class JoinByCodeScreen extends StatefulWidget {
@@ -64,14 +67,26 @@ class _JoinByCodeScreenState extends State<JoinByCodeScreen> {
 
       final room = Room.fromDoc(doc);
 
-      // If private room, check password if needed (TODO)
+      // Ask which side they're on before entering (same as other entry points).
+      if (!mounted) return;
+      setState(() => _searching = false);
+      final stance = await pickJoinStance(context, topic: room.topic);
+      if (stance == null || !mounted) return;
 
-      // Navigate to room
+      // Remember this room under "Visited" so it shows in their history.
+      final uid = FirebaseAuth.instance.currentUser?.uid;
+      if (uid != null) {
+        try {
+          await RoomService().recordJoin(uid, room);
+        } catch (_) {/* non-fatal */}
+      }
+
+      // Navigate to room with the chosen stance.
       if (!mounted) return;
       Navigator.pushReplacement(
         context,
         MaterialPageRoute(
-          builder: (_) => ChatRoomScreen(room: room),
+          builder: (_) => ChatRoomScreen(room: room, initialStance: stance),
         ),
       );
     } catch (e) {
