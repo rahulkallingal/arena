@@ -102,6 +102,62 @@ class RoomService {
     await _rooms.doc(roomId).collection('messages').doc(messageId).delete();
   }
 
+  /// Adds or changes the current user's reaction on a message. Passing the same
+  /// emoji the user already has removes it (toggle off).
+  Future<void> toggleReaction({
+    required String roomId,
+    required String messageId,
+    required String userId,
+    required String emoji,
+    String? currentEmoji,
+  }) async {
+    final ref = _rooms.doc(roomId).collection('messages').doc(messageId);
+    if (currentEmoji == emoji) {
+      // Tapped the same one again → remove it.
+      await ref.update({'reactions.$userId': FieldValue.delete()});
+    } else {
+      await ref.update({'reactions.$userId': emoji});
+    }
+  }
+
+  // ---- Participated / joined rooms --------------------------------------
+  CollectionReference<Map<String, dynamic>> _joinedCol(String userId) =>
+      _db.collection('users').doc(userId).collection('joinedRooms');
+
+  /// Records that [userId] has joined [room] (so it shows under "Joined").
+  /// Stores a denormalized snapshot so the list renders without extra reads.
+  Future<void> recordJoin(String userId, Room room) async {
+    await _joinedCol(userId).doc(room.id).set({
+      'roomId': room.id,
+      'name': room.name,
+      'topic': room.topic,
+      'category': room.category,
+      'isPrivate': room.isPrivate,
+      'createdBy': room.createdBy,
+      'createdByName': room.createdByName,
+      'joinedAt': FieldValue.serverTimestamp(),
+    }, SetOptions(merge: true));
+  }
+
+  /// Live list of rooms the user has joined, most recently joined first.
+  Stream<List<Room>> watchJoinedRooms(String userId) {
+    return _joinedCol(userId)
+        .orderBy('joinedAt', descending: true)
+        .snapshots()
+        .map((snap) => snap.docs.map((d) {
+              final m = d.data();
+              return Room(
+                id: m['roomId'] ?? d.id,
+                name: m['name'] ?? '',
+                topic: m['topic'] ?? '',
+                category: m['category'] ?? 'Other',
+                isPrivate: m['isPrivate'] ?? false,
+                createdBy: m['createdBy'] ?? '',
+                createdByName: m['createdByName'] ?? 'Someone',
+              );
+            }).toList());
+  }
+
   /// Scrambles a password with SHA-256 so the real password is never stored.
   String hashPassword(String password) {
     return sha256.convert(utf8.encode(password.trim())).toString();

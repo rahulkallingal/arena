@@ -20,7 +20,10 @@ class _LoginScreenState extends State<LoginScreen> {
 
   bool _isSignUp = true; // start on "create account"
   bool _busy = false;
-  String? _error;
+  String? _generalError;
+  String? _emailError;
+  String? _passwordError;
+  String? _nameError;
 
   @override
   void dispose() {
@@ -30,28 +33,35 @@ class _LoginScreenState extends State<LoginScreen> {
     super.dispose();
   }
 
+  void _clearErrors() {
+    _generalError = null;
+    _emailError = null;
+    _passwordError = null;
+    _nameError = null;
+  }
+
   Future<void> _submit() async {
     final name = _name.text.trim();
     final email = _email.text.trim();
     final password = _password.text;
 
+    setState(_clearErrors);
+
+    // Client-side validation, highlighting the specific field.
     if (_isSignUp && name.length < 2) {
-      setState(() => _error = 'Enter a display name (at least 2 characters).');
+      setState(() => _nameError = 'Enter a display name (2+ characters).');
       return;
     }
     if (!email.contains('@') || !email.contains('.')) {
-      setState(() => _error = 'Enter a valid email address.');
+      setState(() => _emailError = 'Incorrect email address.');
       return;
     }
     if (password.length < 6) {
-      setState(() => _error = 'Password must be at least 6 characters.');
+      setState(() => _passwordError = 'Password must be at least 6 characters.');
       return;
     }
 
-    setState(() {
-      _busy = true;
-      _error = null;
-    });
+    setState(() => _busy = true);
     try {
       if (_isSignUp) {
         await _auth.signUp(email: email, password: password, name: name);
@@ -59,11 +69,34 @@ class _LoginScreenState extends State<LoginScreen> {
         await _auth.logIn(email: email, password: password);
       }
       if (!mounted) return;
+      if (_isSignUp) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Verification email sent to $email — '
+                'please check your inbox.'),
+            duration: const Duration(seconds: 4),
+          ),
+        );
+      }
       Navigator.of(context).pushReplacement(
         MaterialPageRoute(builder: (_) => const RoomsListScreen()),
       );
     } catch (e) {
-      setState(() => _error = AuthService.friendlyError(e));
+      // Highlight the field the error belongs to (email vs password).
+      final err = AuthService.classifyError(e);
+      setState(() {
+        switch (err.field) {
+          case AuthField.email:
+            _emailError = err.message;
+            break;
+          case AuthField.password:
+            _passwordError = err.message;
+            break;
+          case AuthField.general:
+            _generalError = err.message;
+            break;
+        }
+      });
     } finally {
       if (mounted) setState(() => _busy = false);
     }
@@ -104,10 +137,14 @@ class _LoginScreenState extends State<LoginScreen> {
                     controller: _name,
                     textInputAction: TextInputAction.next,
                     maxLength: 20,
-                    decoration: const InputDecoration(
+                    onChanged: (_) {
+                      if (_nameError != null) setState(() => _nameError = null);
+                    },
+                    decoration: InputDecoration(
                       hintText: 'Display name (shown in debates)',
-                      prefixIcon: Icon(Icons.person_outline),
+                      prefixIcon: const Icon(Icons.person_outline),
                       counterText: '',
+                      errorText: _nameError,
                     ),
                   ),
                   const SizedBox(height: 12),
@@ -117,9 +154,13 @@ class _LoginScreenState extends State<LoginScreen> {
                   keyboardType: TextInputType.emailAddress,
                   textInputAction: TextInputAction.next,
                   autocorrect: false,
-                  decoration: const InputDecoration(
+                  onChanged: (_) {
+                    if (_emailError != null) setState(() => _emailError = null);
+                  },
+                  decoration: InputDecoration(
                     hintText: 'Email',
-                    prefixIcon: Icon(Icons.email_outlined),
+                    prefixIcon: const Icon(Icons.email_outlined),
+                    errorText: _emailError,
                   ),
                 ),
                 const SizedBox(height: 12),
@@ -128,14 +169,20 @@ class _LoginScreenState extends State<LoginScreen> {
                   obscureText: true,
                   textInputAction: TextInputAction.done,
                   onSubmitted: (_) => _submit(),
-                  decoration: const InputDecoration(
+                  onChanged: (_) {
+                    if (_passwordError != null) {
+                      setState(() => _passwordError = null);
+                    }
+                  },
+                  decoration: InputDecoration(
                     hintText: 'Password (6+ characters)',
-                    prefixIcon: Icon(Icons.lock_outline),
+                    prefixIcon: const Icon(Icons.lock_outline),
+                    errorText: _passwordError,
                   ),
                 ),
-                if (_error != null) ...[
+                if (_generalError != null) ...[
                   const SizedBox(height: 10),
-                  Text(_error!,
+                  Text(_generalError!,
                       textAlign: TextAlign.center,
                       style: const TextStyle(color: AppColors.primary)),
                 ],
@@ -157,7 +204,7 @@ class _LoginScreenState extends State<LoginScreen> {
                       ? null
                       : () => setState(() {
                             _isSignUp = !_isSignUp;
-                            _error = null;
+                            _clearErrors();
                           }),
                   child: Text(
                     _isSignUp

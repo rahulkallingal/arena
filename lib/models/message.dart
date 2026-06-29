@@ -15,6 +15,10 @@ class Message {
   final Stance stance;
   final DateTime? createdAt;
 
+  /// Reactions keyed by user id → emoji (e.g. {uid: '👍'}). One reaction per
+  /// user; changing it overwrites the previous one.
+  final Map<String, String> reactions;
+
   Message({
     required this.id,
     required this.text,
@@ -22,10 +26,12 @@ class Message {
     required this.senderName,
     this.stance = Stance.neutral,
     this.createdAt,
+    this.reactions = const {},
   });
 
   factory Message.fromDoc(DocumentSnapshot<Map<String, dynamic>> doc) {
     final d = doc.data() ?? {};
+    final rawReactions = (d['reactions'] as Map<String, dynamic>?) ?? {};
     return Message(
       id: doc.id,
       text: d['text'] ?? '',
@@ -33,8 +39,21 @@ class Message {
       senderName: d['senderName'] ?? 'Anonymous',
       stance: _stanceFromString(d['stance']),
       createdAt: (d['createdAt'] as Timestamp?)?.toDate(),
+      reactions: rawReactions.map((k, v) => MapEntry(k, v.toString())),
     );
   }
+
+  /// Total count per emoji, e.g. {'👍': 3, '❤️': 1}.
+  Map<String, int> get reactionCounts {
+    final counts = <String, int>{};
+    for (final emoji in reactions.values) {
+      counts[emoji] = (counts[emoji] ?? 0) + 1;
+    }
+    return counts;
+  }
+
+  /// The emoji the given user reacted with, or null if they haven't reacted.
+  String? myReaction(String? uid) => uid == null ? null : reactions[uid];
 
   Map<String, dynamic> toCreateMap() => {
         'text': text,
@@ -42,6 +61,7 @@ class Message {
         'senderName': senderName,
         'stance': stance.name,
         'createdAt': FieldValue.serverTimestamp(),
+        'reactions': <String, String>{},
       };
 
   static Stance _stanceFromString(dynamic value) {

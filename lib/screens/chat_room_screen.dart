@@ -12,7 +12,16 @@ import '../widgets/message_bubble.dart';
 /// an input bar where you pick a stance (For / Against / Neutral) and send.
 class ChatRoomScreen extends StatefulWidget {
   final Room room;
-  const ChatRoomScreen({super.key, required this.room});
+
+  /// The stance the user picked when joining (Support / Oppose). Pre-selects
+  /// the input bar so their first message is already tagged.
+  final Stance initialStance;
+
+  const ChatRoomScreen({
+    super.key,
+    required this.room,
+    this.initialStance = Stance.neutral,
+  });
 
   @override
   State<ChatRoomScreen> createState() => _ChatRoomScreenState();
@@ -25,7 +34,7 @@ class _ChatRoomScreenState extends State<ChatRoomScreen> {
   final _auth = AuthService();
   final _moderation = ModerationService();
 
-  Stance _stance = Stance.neutral;
+  late Stance _stance = widget.initialStance;
   bool _sending = false;
   Set<String> _blocked = {};
 
@@ -33,6 +42,22 @@ class _ChatRoomScreenState extends State<ChatRoomScreen> {
   void initState() {
     super.initState();
     _loadBlocked();
+  }
+
+  Future<void> _toggleReaction(Message m, String emoji) async {
+    final uid = _auth.currentUser?.uid;
+    if (uid == null) return;
+    try {
+      await _rooms.toggleReaction(
+        roomId: widget.room.id,
+        messageId: m.id,
+        userId: uid,
+        emoji: emoji,
+        currentEmoji: m.myReaction(uid),
+      );
+    } catch (_) {
+      _toast('Could not update reaction.');
+    }
   }
 
   Future<void> _loadBlocked() async {
@@ -229,6 +254,8 @@ class _ChatRoomScreenState extends State<ChatRoomScreen> {
                       child: MessageBubble(
                         message: m,
                         isMine: m.senderId == myUid,
+                        myUid: myUid,
+                        onReact: (emoji) => _toggleReaction(m, emoji),
                       ),
                     );
                   },

@@ -2,6 +2,28 @@
 
 All notable changes to Arena will be documented in this file.
 
+## [1.0.4] - June 29, 2026
+
+### ✨ Added / improved
+- **Login error validation:** wrong/invalid email now highlights the **email**
+  field ("Incorrect email address."), wrong password highlights the
+  **password** field ("Incorrect password.") — instead of always blaming the
+  password.
+- **Pick your side before joining:** tapping a room now prompts Support / Oppose
+  (or "just watching") and drops you in with that stance preselected.
+- **Private group clarity:** private rooms show a clear notice on the card
+  ("you'll need the group password — contact the admin") before you tap in.
+- **Joined rooms:** new **My Rooms / Joined** toggle on the home screen; rooms
+  you join are remembered so you can jump back in.
+- **Message reactions:** react to messages with 👍 ❤️ 😂 👏 🔥, with live
+  per-emoji counts; add/change/remove updates in real time.
+- **Email verification:** sign-up now sends a verification link, with a
+  "verify your email" banner + Resend on the home screen.
+
+### 🔐 Firestore rules
+- Messages may now be updated **only** to change the `reactions` map (text is
+  still immutable). **Re-publish `firestore.rules`** for reactions to work.
+
 ## [1.0.3] - June 29, 2026
 
 ### 🐞 Fixed

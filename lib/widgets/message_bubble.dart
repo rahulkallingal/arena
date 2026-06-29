@@ -6,17 +6,69 @@ import '../theme.dart';
 /// One chat bubble. My own messages sit on the right; others on the left.
 /// A small coloured tag shows whether the message argues For or Against the
 /// topic.
+/// The emoji choices offered when reacting to a message.
+const List<String> kReactionEmojis = ['👍', '❤️', '😂', '👏', '🔥'];
+
 class MessageBubble extends StatelessWidget {
   final Message message;
   final bool isMine;
+  final String? myUid;
 
-  const MessageBubble({super.key, required this.message, required this.isMine});
+  /// Called when the user picks an emoji to react with (or taps their existing
+  /// reaction to remove it).
+  final ValueChanged<String>? onReact;
+
+  const MessageBubble({
+    super.key,
+    required this.message,
+    required this.isMine,
+    this.myUid,
+    this.onReact,
+  });
+
+  void _openReactionPicker(BuildContext context) {
+    if (onReact == null) return;
+    final mine = message.myReaction(myUid);
+    showModalBottomSheet(
+      context: context,
+      builder: (sheetCtx) => SafeArea(
+        child: Padding(
+          padding: const EdgeInsets.symmetric(vertical: 16, horizontal: 8),
+          child: Row(
+            mainAxisAlignment: MainAxisAlignment.spaceAround,
+            children: kReactionEmojis.map((e) {
+              final selected = e == mine;
+              return InkWell(
+                borderRadius: BorderRadius.circular(30),
+                onTap: () {
+                  Navigator.pop(sheetCtx);
+                  onReact!(e);
+                },
+                child: Container(
+                  padding: const EdgeInsets.all(8),
+                  decoration: BoxDecoration(
+                    color: selected
+                        ? AppColors.primary.withValues(alpha: 0.15)
+                        : Colors.transparent,
+                    shape: BoxShape.circle,
+                  ),
+                  child: Text(e, style: const TextStyle(fontSize: 30)),
+                ),
+              );
+            }).toList(),
+          ),
+        ),
+      ),
+    );
+  }
 
   @override
   Widget build(BuildContext context) {
     final align = isMine ? CrossAxisAlignment.end : CrossAxisAlignment.start;
     final bubbleColor = isMine ? AppColors.primary : AppColors.card;
     final textColor = isMine ? Colors.white : AppColors.textDark;
+    final counts = message.reactionCounts;
+    final mine = message.myReaction(myUid);
 
     return Padding(
       padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
@@ -35,36 +87,94 @@ class MessageBubble extends StatelessWidget {
                 ),
               ),
             ),
-          Container(
-            constraints: BoxConstraints(
-              maxWidth: MediaQuery.of(context).size.width * 0.78,
-            ),
-            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-            decoration: BoxDecoration(
-              color: bubbleColor,
-              borderRadius: BorderRadius.circular(14),
-              border: isMine
-                  ? null
-                  : const Border.fromBorderSide(
-                      BorderSide(color: AppColors.border)),
-            ),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                if (message.stance != Stance.neutral) ...[
-                  _StanceTag(stance: message.stance, onDark: isMine),
-                  const SizedBox(height: 4),
-                ],
-                Text(
-                  message.text,
-                  style: TextStyle(fontSize: 15, color: textColor),
+          Row(
+            mainAxisAlignment:
+                isMine ? MainAxisAlignment.end : MainAxisAlignment.start,
+            children: [
+              if (isMine && onReact != null) _reactButton(context),
+              Flexible(
+                child: GestureDetector(
+                  onTap: onReact == null
+                      ? null
+                      : () => _openReactionPicker(context),
+                  child: Container(
+                    constraints: BoxConstraints(
+                      maxWidth: MediaQuery.of(context).size.width * 0.70,
+                    ),
+                    padding: const EdgeInsets.symmetric(
+                        horizontal: 12, vertical: 8),
+                    decoration: BoxDecoration(
+                      color: bubbleColor,
+                      borderRadius: BorderRadius.circular(14),
+                      border: isMine
+                          ? null
+                          : const Border.fromBorderSide(
+                              BorderSide(color: AppColors.border)),
+                    ),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        if (message.stance != Stance.neutral) ...[
+                          _StanceTag(stance: message.stance, onDark: isMine),
+                          const SizedBox(height: 4),
+                        ],
+                        Text(
+                          message.text,
+                          style: TextStyle(fontSize: 15, color: textColor),
+                        ),
+                      ],
+                    ),
+                  ),
                 ),
-              ],
-            ),
+              ),
+              if (!isMine && onReact != null) _reactButton(context),
+            ],
           ),
+          if (counts.isNotEmpty)
+            Padding(
+              padding: const EdgeInsets.only(top: 4),
+              child: Wrap(
+                spacing: 6,
+                children: counts.entries.map((e) {
+                  final selected = mine == e.key;
+                  return GestureDetector(
+                    onTap: onReact == null ? null : () => onReact!(e.key),
+                    child: Container(
+                      padding: const EdgeInsets.symmetric(
+                          horizontal: 8, vertical: 3),
+                      decoration: BoxDecoration(
+                        color: selected
+                            ? AppColors.primary.withValues(alpha: 0.15)
+                            : AppColors.card,
+                        borderRadius: BorderRadius.circular(12),
+                        border: Border.all(
+                          color:
+                              selected ? AppColors.primary : AppColors.border,
+                        ),
+                      ),
+                      child: Text(
+                        '${e.key} ${e.value}',
+                        style: const TextStyle(fontSize: 12),
+                      ),
+                    ),
+                  );
+                }).toList(),
+              ),
+            ),
         ],
       ),
+    );
+  }
+
+  Widget _reactButton(BuildContext context) {
+    return IconButton(
+      visualDensity: VisualDensity.compact,
+      padding: EdgeInsets.zero,
+      constraints: const BoxConstraints(minWidth: 32, minHeight: 32),
+      icon: const Icon(Icons.add_reaction_outlined,
+          size: 18, color: AppColors.textGrey),
+      onPressed: () => _openReactionPicker(context),
     );
   }
 }

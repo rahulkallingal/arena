@@ -6,6 +6,7 @@ import '../services/auth_service.dart';
 import '../services/daily_topic_service.dart';
 import '../services/room_service.dart';
 import '../theme.dart';
+import '../widgets/join_stance_dialog.dart';
 import '../widgets/room_card.dart';
 import 'chat_room_screen.dart';
 import 'create_room_screen.dart';
@@ -30,6 +31,8 @@ class _RoomsListScreenState extends State<RoomsListScreen> {
   String _query = '';
   String? _category; // null = all categories
   bool _openingDaily = false;
+  bool _showJoined = false; // false = rooms I created, true = rooms I joined
+  bool _hideVerifyBanner = false;
 
   @override
   void dispose() {
@@ -108,6 +111,21 @@ class _RoomsListScreenState extends State<RoomsListScreen> {
       ),
       body: Column(
         children: [
+          if (_auth.currentUser != null &&
+              !(_auth.currentUser!.emailVerified) &&
+              !_hideVerifyBanner)
+            _VerifyEmailBanner(
+              onResend: () async {
+                final messenger = ScaffoldMessenger.of(context);
+                try {
+                  await _auth.sendEmailVerification();
+                  messenger.showSnackBar(
+                    const SnackBar(content: Text('Verification email sent.')),
+                  );
+                } catch (_) {}
+              },
+              onDismiss: () => setState(() => _hideVerifyBanner = true),
+            ),
           _DailyTopicCard(
             topic: _daily.todayTopic(),
             loading: _openingDaily,
@@ -121,9 +139,15 @@ class _RoomsListScreenState extends State<RoomsListScreen> {
             selected: _category,
             onSelected: (c) => setState(() => _category = c),
           ),
+          _RoomsToggle(
+            showJoined: _showJoined,
+            onChanged: (v) => setState(() => _showJoined = v),
+          ),
           Expanded(
             child: StreamBuilder<List<Room>>(
-              stream: _rooms.watchMyRooms(_auth.currentUser!.uid),
+              stream: _showJoined
+                  ? _rooms.watchJoinedRooms(_auth.currentUser!.uid)
+                  : _rooms.watchMyRooms(_auth.currentUser!.uid),
               builder: (context, snapshot) {
                 if (snapshot.hasError) {
                   return const _Centered(
@@ -138,14 +162,21 @@ class _RoomsListScreenState extends State<RoomsListScreen> {
                 final list =
                     snapshot.data!.where(_matchesFilters).toList();
                 if (list.isEmpty) {
+                  final filtering = _query.isNotEmpty || _category != null;
                   return _Centered(
-                    emoji: _query.isNotEmpty || _category != null ? '🔍' : '🗣️',
-                    title: _query.isNotEmpty || _category != null
+                    emoji: filtering
+                        ? '🔍'
+                        : (_showJoined ? '👥' : '🗣️'),
+                    title: filtering
                         ? 'No rooms match'
-                        : 'No rooms created yet',
-                    subtitle: _query.isNotEmpty || _category != null
+                        : (_showJoined
+                            ? 'No joined rooms yet'
+                            : 'No rooms created yet'),
+                    subtitle: filtering
                         ? 'Try a different search or category.'
-                        : 'Create a new debate room or discover rooms from others!',
+                        : (_showJoined
+                            ? 'Rooms you join from Discover will show up here.'
+                            : 'Create a new debate room or discover rooms from others!'),
                   );
                 }
                 return ListView.builder(
@@ -172,11 +203,20 @@ class _RoomsListScreenState extends State<RoomsListScreen> {
       final ok = await _askPassword(room);
       if (ok != true) return;
     }
-    if (mounted) {
-      Navigator.of(context).push(
-        MaterialPageRoute(builder: (_) => ChatRoomScreen(room: room)),
-      );
-    }
+    if (!mounted) return;
+    // Ask which side they're on before entering the debate.
+    final stance = await pickJoinStance(context, topic: room.topic);
+    if (stance == null || !mounted) return;
+    // Remember this room under "Joined" so they can come back easily.
+    try {
+      await _rooms.recordJoin(_auth.currentUser!.uid, room);
+    } catch (_) {/* non-fatal */}
+    if (!mounted) return;
+    Navigator.of(context).push(
+      MaterialPageRoute(
+        builder: (_) => ChatRoomScreen(room: room, initialStance: stance),
+      ),
+    );
   }
 
   Future<bool?> _askPassword(Room room) {
@@ -229,6 +269,86 @@ class _RoomsListScreenState extends State<RoomsListScreen> {
           },
         );
       },
+    );
+  }
+}
+
+/// A toggle to switch the list between rooms I created and rooms I've joined.
+class _RoomsToggle extends StatelessWidget {
+  final bool showJoined;
+  final ValueChanged<bool> onChanged;
+  const _RoomsToggle({required this.showJoined, required this.onChanged});
+
+  @override
+  Widget build(BuildContext context) {
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(16, 4, 16, 4),
+      child: Row(
+        children: [
+          _seg('My Rooms', !showJoined, () => onChanged(false)),
+          const SizedBox(width: 8),
+          _seg('Joined', showJoined, () => onChanged(true)),
+        ],
+      ),
+    );
+  }
+
+  Widget _seg(String label, bool selected, VoidCallback onTap) {
+    return Expanded(
+      child: GestureDetector(
+        onTap: onTap,
+        child: Container(
+          height: 38,
+          alignment: Alignment.center,
+          decoration: BoxDecoration(
+            color: selected ? AppColors.primary : Colors.white,
+            borderRadius: BorderRadius.circular(20),
+            border: Border.all(color: AppColors.border),
+          ),
+          child: Text(
+            label,
+            style: TextStyle(
+              color: selected ? Colors.white : AppColors.textDark,
+              fontWeight: FontWeight.w700,
+              fontSize: 13,
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+/// A dismissible banner nudging the user to verify their email.
+class _VerifyEmailBanner extends StatelessWidget {
+  final VoidCallback onResend;
+  final VoidCallback onDismiss;
+  const _VerifyEmailBanner({required this.onResend, required this.onDismiss});
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      width: double.infinity,
+      color: AppColors.accent.withValues(alpha: 0.18),
+      padding: const EdgeInsets.fromLTRB(16, 10, 8, 10),
+      child: Row(
+        children: [
+          const Icon(Icons.mark_email_unread_outlined,
+              size: 18, color: AppColors.textDark),
+          const SizedBox(width: 8),
+          const Expanded(
+            child: Text(
+              'Please verify your email to secure your account.',
+              style: TextStyle(fontSize: 13, color: AppColors.textDark),
+            ),
+          ),
+          TextButton(onPressed: onResend, child: const Text('Resend')),
+          IconButton(
+            icon: const Icon(Icons.close, size: 18),
+            onPressed: onDismiss,
+          ),
+        ],
+      ),
     );
   }
 }

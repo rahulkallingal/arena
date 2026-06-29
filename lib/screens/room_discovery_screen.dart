@@ -2,7 +2,9 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 import '../models/room.dart';
+import '../services/room_service.dart';
 import '../theme.dart';
+import '../widgets/join_stance_dialog.dart';
 import 'chat_room_screen.dart';
 import 'join_by_code_screen.dart';
 import 'room_share_dialog.dart';
@@ -16,8 +18,28 @@ class RoomDiscoveryScreen extends StatefulWidget {
 
 class _RoomDiscoveryScreenState extends State<RoomDiscoveryScreen> {
   final _searchController = TextEditingController();
+  final _roomService = RoomService();
   String _selectedCategory = 'All';
   bool _showTrending = true;
+
+  /// Asks the user's side, records the join, then opens the debate.
+  Future<void> _openRoom(Room room) async {
+    final stance = await pickJoinStance(context, topic: room.topic);
+    if (stance == null || !mounted) return;
+    final uid = FirebaseAuth.instance.currentUser?.uid;
+    if (uid != null) {
+      try {
+        await _roomService.recordJoin(uid, room);
+      } catch (_) {/* non-fatal */}
+    }
+    if (!mounted) return;
+    Navigator.push(
+      context,
+      MaterialPageRoute(
+        builder: (_) => ChatRoomScreen(room: room, initialStance: stance),
+      ),
+    );
+  }
 
   static const List<String> kCategories = [
     'All',
@@ -220,14 +242,7 @@ class _RoomDiscoveryScreenState extends State<RoomDiscoveryScreen> {
 
   Widget _roomCard(BuildContext context, Room room) {
     return GestureDetector(
-      onTap: () {
-        Navigator.push(
-          context,
-          MaterialPageRoute(
-            builder: (_) => ChatRoomScreen(room: room),
-          ),
-        );
-      },
+      onTap: () => _openRoom(room),
       child: Container(
         margin: const EdgeInsets.only(bottom: 12),
         padding: const EdgeInsets.all(16),

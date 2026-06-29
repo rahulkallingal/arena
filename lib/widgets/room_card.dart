@@ -65,6 +65,37 @@ class RoomCard extends StatelessWidget {
                   height: 1.3,
                 ),
               ),
+              if (room.isPrivate) ...[
+                const SizedBox(height: 10),
+                Container(
+                  padding: const EdgeInsets.all(10),
+                  decoration: BoxDecoration(
+                    color: AppColors.primary.withValues(alpha: 0.08),
+                    borderRadius: BorderRadius.circular(10),
+                    border: Border.all(
+                        color: AppColors.primary.withValues(alpha: 0.3)),
+                  ),
+                  child: const Row(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Icon(Icons.lock, size: 16, color: AppColors.primary),
+                      SizedBox(width: 8),
+                      Expanded(
+                        child: Text(
+                          'This is a private group. You\'ll need the group '
+                          'password to join — please contact the group '
+                          'administrator for access.',
+                          style: TextStyle(
+                            fontSize: 12,
+                            color: AppColors.primary,
+                            height: 1.3,
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ],
               const SizedBox(height: 10),
               Row(
                 children: [
