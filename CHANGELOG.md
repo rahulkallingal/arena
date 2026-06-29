@@ -2,6 +2,12 @@
 
 All notable changes to Arena will be documented in this file.
 
+## [1.0.6] - June 29, 2026
+
+### ✨ Added
+- **Continue with Google** sign-in (real Google account → Firebase), alongside
+  email/password.
+
 ## [1.0.5] - June 29, 2026
 
 ### ✨ Added

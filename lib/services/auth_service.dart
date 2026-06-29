@@ -1,5 +1,6 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
+import 'package:google_sign_in/google_sign_in.dart';
 
 /// Which login field an error should be shown against.
 enum AuthField { email, password, general }
@@ -19,6 +20,12 @@ class AuthError {
 class AuthService {
   final _auth = FirebaseAuth.instance;
   final _db = FirebaseFirestore.instance;
+
+  /// Web/server OAuth client id (from google-services.json) used to obtain an
+  /// ID token that Firebase will accept for Google sign-in.
+  static const _googleServerClientId =
+      '958305310400-iu1a1le283u4b5jvoks0sht3agk5s3h9.apps.googleusercontent.com';
+  static bool _googleReady = false;
 
   User? get currentUser => _auth.currentUser;
 
@@ -78,7 +85,44 @@ class AuthService {
     );
   }
 
-  Future<void> signOut() => _auth.signOut();
+  /// Signs in with Google. Returns false if the user cancelled the chooser.
+  /// Throws on real failures.
+  Future<bool> signInWithGoogle() async {
+    final google = GoogleSignIn.instance;
+    if (!_googleReady) {
+      await google.initialize(serverClientId: _googleServerClientId);
+      _googleReady = true;
+    }
+    GoogleSignInAccount account;
+    try {
+      account = await google.authenticate();
+    } on GoogleSignInException catch (e) {
+      if (e.code == GoogleSignInExceptionCode.canceled) return false;
+      rethrow;
+    }
+    final idToken = account.authentication.idToken;
+    if (idToken == null) {
+      throw FirebaseAuthException(
+          code: 'no-id-token', message: 'Google sign-in did not return a token.');
+    }
+    final credential = GoogleAuthProvider.credential(idToken: idToken);
+    final cred = await _auth.signInWithCredential(credential);
+    final user = cred.user!;
+    // Save / merge a profile doc (display name shown next to messages).
+    await _db.collection('users').doc(user.uid).set({
+      'displayName': user.displayName ?? 'Anonymous',
+      'email': user.email,
+      'createdAt': FieldValue.serverTimestamp(),
+    }, SetOptions(merge: true));
+    return true;
+  }
+
+  Future<void> signOut() async {
+    try {
+      await GoogleSignIn.instance.signOut();
+    } catch (_) {/* not signed in with Google */}
+    await _auth.signOut();
+  }
 
   /// Classifies a login/signup error to the field it belongs to, so the UI can
   /// highlight the email field for email problems and the password field for

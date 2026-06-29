@@ -40,6 +40,28 @@ class _LoginScreenState extends State<LoginScreen> {
     _nameError = null;
   }
 
+  Future<void> _google() async {
+    setState(() {
+      _busy = true;
+      _clearErrors();
+    });
+    try {
+      final ok = await _auth.signInWithGoogle();
+      if (!ok) {
+        if (mounted) setState(() => _busy = false);
+        return; // user cancelled
+      }
+      if (!mounted) return;
+      Navigator.of(context).pushReplacement(
+        MaterialPageRoute(builder: (_) => const RoomsListScreen()),
+      );
+    } catch (e) {
+      setState(() => _generalError = AuthService.friendlyError(e));
+    } finally {
+      if (mounted) setState(() => _busy = false);
+    }
+  }
+
   Future<void> _submit() async {
     final name = _name.text.trim();
     final email = _email.text.trim();
@@ -197,6 +219,32 @@ class _LoginScreenState extends State<LoginScreen> {
                               strokeWidth: 2, color: Colors.white),
                         )
                       : Text(_isSignUp ? 'Create account' : 'Log in'),
+                ),
+                const SizedBox(height: 16),
+                Row(
+                  children: const [
+                    Expanded(child: Divider()),
+                    Padding(
+                      padding: EdgeInsets.symmetric(horizontal: 8),
+                      child: Text('or', style: TextStyle(color: AppColors.textGrey)),
+                    ),
+                    Expanded(child: Divider()),
+                  ],
+                ),
+                const SizedBox(height: 16),
+                OutlinedButton.icon(
+                  onPressed: _busy ? null : _google,
+                  icon: const Text('G',
+                      style: TextStyle(
+                          fontSize: 18,
+                          fontWeight: FontWeight.bold,
+                          color: Color(0xFF4285F4))),
+                  label: const Text('Continue with Google'),
+                  style: OutlinedButton.styleFrom(
+                    foregroundColor: AppColors.textDark,
+                    minimumSize: const Size.fromHeight(48),
+                    side: const BorderSide(color: AppColors.border),
+                  ),
                 ),
                 const SizedBox(height: 8),
                 TextButton(
