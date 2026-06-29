@@ -2,6 +2,16 @@
 
 All notable changes to Arena will be documented in this file.
 
+## [1.0.7] - June 29, 2026
+
+### ✨ Added
+- **Terms & Conditions agreement:** account creation now requires ticking an
+  "I agree to the Terms of Service and Privacy Policy" checkbox. **Create
+  account** and **Continue with Google** stay disabled until it's checked.
+- New in-app **Terms of Service** and **Privacy Policy** pages (tappable links
+  on the checkbox). Verified on device: links open the legal pages, ticking the
+  box enables the buttons.
+
 ## [1.0.6] - June 29, 2026
 
 ### ✨ Added

@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 
 import '../services/auth_service.dart';
 import '../theme.dart';
+import 'legal_screen.dart';
 import 'rooms_list_screen.dart';
 
 /// Sign up / log in with email + password. Toggles between the two modes.
@@ -20,6 +21,7 @@ class _LoginScreenState extends State<LoginScreen> {
 
   bool _isSignUp = true; // start on "create account"
   bool _busy = false;
+  bool _agreed = false; // ticked the Terms & Privacy checkbox
   String? _generalError;
   String? _emailError;
   String? _passwordError;
@@ -41,6 +43,11 @@ class _LoginScreenState extends State<LoginScreen> {
   }
 
   Future<void> _google() async {
+    if (!_agreed) {
+      setState(() => _generalError =
+          'Please accept the Terms of Service and Privacy Policy first.');
+      return;
+    }
     setState(() {
       _busy = true;
       _clearErrors();
@@ -68,6 +75,12 @@ class _LoginScreenState extends State<LoginScreen> {
     final password = _password.text;
 
     setState(_clearErrors);
+
+    if (_isSignUp && !_agreed) {
+      setState(() => _generalError =
+          'Please accept the Terms of Service and Privacy Policy first.');
+      return;
+    }
 
     // Client-side validation, highlighting the specific field.
     if (_isSignUp && name.length < 2) {
@@ -208,9 +221,14 @@ class _LoginScreenState extends State<LoginScreen> {
                       textAlign: TextAlign.center,
                       style: const TextStyle(color: AppColors.primary)),
                 ],
-                const SizedBox(height: 18),
+                const SizedBox(height: 14),
+                _AgreementCheckbox(
+                  value: _agreed,
+                  onChanged: (v) => setState(() => _agreed = v ?? false),
+                ),
+                const SizedBox(height: 14),
                 ElevatedButton(
-                  onPressed: _busy ? null : _submit,
+                  onPressed: _busy || (_isSignUp && !_agreed) ? null : _submit,
                   child: _busy
                       ? const SizedBox(
                           height: 22,
@@ -233,7 +251,7 @@ class _LoginScreenState extends State<LoginScreen> {
                 ),
                 const SizedBox(height: 16),
                 OutlinedButton.icon(
-                  onPressed: _busy ? null : _google,
+                  onPressed: _busy || !_agreed ? null : _google,
                   icon: const Text('G',
                       style: TextStyle(
                           fontSize: 18,
@@ -266,6 +284,76 @@ class _LoginScreenState extends State<LoginScreen> {
           ),
         ),
       ),
+    );
+  }
+}
+
+/// Checkbox + tappable Terms / Privacy links shown above the auth buttons.
+class _AgreementCheckbox extends StatelessWidget {
+  final bool value;
+  final ValueChanged<bool?> onChanged;
+  const _AgreementCheckbox({required this.value, required this.onChanged});
+
+  void _open(BuildContext context, LegalDoc doc) {
+    Navigator.of(context).push(
+      MaterialPageRoute(builder: (_) => LegalScreen(doc: doc)),
+    );
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Row(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        SizedBox(
+          width: 28,
+          height: 28,
+          child: Checkbox(
+            value: value,
+            onChanged: onChanged,
+            materialTapTargetSize: MaterialTapTargetSize.shrinkWrap,
+          ),
+        ),
+        const SizedBox(width: 8),
+        Expanded(
+          child: Padding(
+            padding: const EdgeInsets.only(top: 4),
+            child: Text.rich(
+              TextSpan(
+                style: const TextStyle(
+                    fontSize: 13, color: AppColors.textGrey, height: 1.4),
+                children: [
+                  const TextSpan(text: 'I agree to the '),
+                  WidgetSpan(
+                    alignment: PlaceholderAlignment.middle,
+                    child: GestureDetector(
+                      onTap: () => _open(context, LegalDoc.terms),
+                      child: const Text('Terms of Service',
+                          style: TextStyle(
+                              fontSize: 13,
+                              color: AppColors.secondary,
+                              fontWeight: FontWeight.w600)),
+                    ),
+                  ),
+                  const TextSpan(text: ' and '),
+                  WidgetSpan(
+                    alignment: PlaceholderAlignment.middle,
+                    child: GestureDetector(
+                      onTap: () => _open(context, LegalDoc.privacy),
+                      child: const Text('Privacy Policy',
+                          style: TextStyle(
+                              fontSize: 13,
+                              color: AppColors.secondary,
+                              fontWeight: FontWeight.w600)),
+                    ),
+                  ),
+                  const TextSpan(text: '.'),
+                ],
+              ),
+            ),
+          ),
+        ),
+      ],
     );
   }
 }
