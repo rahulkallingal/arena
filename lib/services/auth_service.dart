@@ -85,6 +85,35 @@ class AuthService {
     );
   }
 
+  /// Sends a "reset your password" email to [email].
+  Future<void> sendPasswordReset(String email) async {
+    await _auth.sendPasswordResetEmail(email: email.trim());
+  }
+
+  /// Whether the signed-in user logs in with an email + password (so they have
+  /// a password to change). Google-only accounts don't.
+  bool get hasPasswordProvider =>
+      _auth.currentUser?.providerData
+          .any((p) => p.providerId == 'password') ??
+      false;
+
+  /// Changes the signed-in user's password. Firebase requires a recent login,
+  /// so we re-authenticate with the current password first.
+  Future<void> changePassword({
+    required String currentPassword,
+    required String newPassword,
+  }) async {
+    final user = _auth.currentUser;
+    if (user == null || user.email == null) {
+      throw FirebaseAuthException(
+          code: 'no-user', message: 'You are not signed in.');
+    }
+    final cred = EmailAuthProvider.credential(
+        email: user.email!, password: currentPassword);
+    await user.reauthenticateWithCredential(cred);
+    await user.updatePassword(newPassword);
+  }
+
   /// Signs in with Google. Returns false if the user cancelled the chooser.
   /// Throws on real failures.
   Future<bool> signInWithGoogle() async {

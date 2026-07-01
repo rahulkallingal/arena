@@ -43,6 +43,33 @@ class _LoginScreenState extends State<LoginScreen> {
     _nameError = null;
   }
 
+  /// Emails a password-reset link to whatever is typed in the email field.
+  Future<void> _forgotPassword() async {
+    final email = _email.text.trim();
+    setState(_clearErrors);
+    if (!email.contains('@') || !email.contains('.')) {
+      setState(() => _emailError =
+          'Enter your email above first, then tap "Forgot password".');
+      return;
+    }
+    setState(() => _busy = true);
+    try {
+      await _auth.sendPasswordReset(email);
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Password reset email sent — check your inbox and '
+              'spam/junk folder.'),
+          duration: Duration(seconds: 6),
+        ),
+      );
+    } catch (e) {
+      setState(() => _generalError = AuthService.friendlyError(e));
+    } finally {
+      if (mounted) setState(() => _busy = false);
+    }
+  }
+
   Future<void> _google() async {
     // Terms only need to be accepted when creating a new account, not on login.
     if (_isSignUp && !_agreed) {
@@ -231,6 +258,16 @@ class _LoginScreenState extends State<LoginScreen> {
                     ),
                   ),
                 ),
+                // "Forgot password?" only makes sense when logging in.
+                if (!_isSignUp)
+                  Align(
+                    alignment: Alignment.centerRight,
+                    child: TextButton(
+                      onPressed: _busy ? null : _forgotPassword,
+                      child: const Text('Forgot password?',
+                          style: TextStyle(color: AppColors.secondary)),
+                    ),
+                  ),
                 if (_generalError != null) ...[
                   const SizedBox(height: 10),
                   Text(_generalError!,

@@ -1,5 +1,6 @@
 import 'dart:async';
 
+import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 
 import '../data/daily_topics.dart';
@@ -69,6 +70,128 @@ class _RoomsListScreenState extends State<RoomsListScreen>
       await _auth.reloadUser();
       if (mounted) setState(() {});
     } catch (_) {/* offline or not signed in — ignore */}
+  }
+
+  Future<void> _logout() async {
+    final confirm = await showDialog<bool>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: const Text('Log out?'),
+        content: const Text('Are you sure you want to log out of Arena?'),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(ctx, false),
+            child: const Text('Cancel'),
+          ),
+          TextButton(
+            onPressed: () => Navigator.pop(ctx, true),
+            child: const Text('Log out',
+                style: TextStyle(color: AppColors.primary)),
+          ),
+        ],
+      ),
+    );
+    if (confirm != true) return;
+    await _auth.signOut();
+    if (mounted) {
+      Navigator.of(context).pushReplacement(
+        MaterialPageRoute(builder: (_) => const LoginScreen()),
+      );
+    }
+  }
+
+  /// Dialog to change the account password (re-auth with the current one first).
+  Future<void> _showChangePassword() async {
+    final currentCtrl = TextEditingController();
+    final newCtrl = TextEditingController();
+    await showDialog<void>(
+      context: context,
+      builder: (ctx) {
+        String? error;
+        bool busy = false;
+        return StatefulBuilder(
+          builder: (ctx, setLocal) => AlertDialog(
+            title: const Text('Change password'),
+            content: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                TextField(
+                  controller: currentCtrl,
+                  obscureText: true,
+                  decoration:
+                      const InputDecoration(labelText: 'Current password'),
+                ),
+                const SizedBox(height: 8),
+                TextField(
+                  controller: newCtrl,
+                  obscureText: true,
+                  decoration: const InputDecoration(
+                      labelText: 'New password (6+ characters)'),
+                ),
+                if (error != null)
+                  Padding(
+                    padding: const EdgeInsets.only(top: 10),
+                    child: Text(error!,
+                        style: const TextStyle(
+                            color: AppColors.primary, fontSize: 13)),
+                  ),
+              ],
+            ),
+            actions: [
+              TextButton(
+                onPressed: busy ? null : () => Navigator.pop(ctx),
+                child: const Text('Cancel'),
+              ),
+              TextButton(
+                onPressed: busy
+                    ? null
+                    : () async {
+                        if (newCtrl.text.length < 6) {
+                          setLocal(() => error =
+                              'New password must be at least 6 characters.');
+                          return;
+                        }
+                        setLocal(() {
+                          busy = true;
+                          error = null;
+                        });
+                        try {
+                          await _auth.changePassword(
+                            currentPassword: currentCtrl.text,
+                            newPassword: newCtrl.text,
+                          );
+                          if (ctx.mounted) Navigator.pop(ctx);
+                          if (mounted) {
+                            ScaffoldMessenger.of(context).showSnackBar(
+                              const SnackBar(
+                                  content: Text('Password changed.')),
+                            );
+                          }
+                        } catch (e) {
+                          var msg = AuthService.friendlyError(e);
+                          if (e is FirebaseAuthException &&
+                              (e.code == 'wrong-password' ||
+                                  e.code == 'invalid-credential')) {
+                            msg = 'Current password is incorrect.';
+                          }
+                          setLocal(() {
+                            busy = false;
+                            error = msg;
+                          });
+                        }
+                      },
+                child: busy
+                    ? const SizedBox(
+                        height: 16,
+                        width: 16,
+                        child: CircularProgressIndicator(strokeWidth: 2))
+                    : const Text('Save'),
+              ),
+            ],
+          ),
+        );
+      },
+    );
   }
 
   @override
@@ -144,37 +267,23 @@ class _RoomsListScreenState extends State<RoomsListScreen>
               );
             },
           ),
-          IconButton(
-            tooltip: 'Sign out',
-            icon: const Icon(Icons.logout),
-            onPressed: () async {
-              final confirm = await showDialog<bool>(
-                context: context,
-                builder: (ctx) => AlertDialog(
-                  title: const Text('Log out?'),
-                  content: const Text(
-                      'Are you sure you want to log out of Arena?'),
-                  actions: [
-                    TextButton(
-                      onPressed: () => Navigator.pop(ctx, false),
-                      child: const Text('Cancel'),
-                    ),
-                    TextButton(
-                      onPressed: () => Navigator.pop(ctx, true),
-                      child: const Text('Log out',
-                          style: TextStyle(color: AppColors.primary)),
-                    ),
-                  ],
-                ),
-              );
-              if (confirm != true) return;
-              await _auth.signOut();
-              if (context.mounted) {
-                Navigator.of(context).pushReplacement(
-                  MaterialPageRoute(builder: (_) => const LoginScreen()),
-                );
+          PopupMenuButton<String>(
+            tooltip: 'Account',
+            icon: const Icon(Icons.account_circle_outlined),
+            onSelected: (value) {
+              if (value == 'password') {
+                _showChangePassword();
+              } else if (value == 'logout') {
+                _logout();
               }
             },
+            itemBuilder: (ctx) => [
+              // Only email/password accounts have a password to change.
+              if (_auth.hasPasswordProvider)
+                const PopupMenuItem(
+                    value: 'password', child: Text('Change password')),
+              const PopupMenuItem(value: 'logout', child: Text('Log out')),
+            ],
           ),
         ],
       ),
