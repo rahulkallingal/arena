@@ -247,29 +247,9 @@ class _LoginScreenState extends State<LoginScreen> {
                   ),
                 ],
                 const SizedBox(height: 14),
-                ElevatedButton(
-                  onPressed: _busy || (_isSignUp && !_agreed) ? null : _submit,
-                  child: _busy
-                      ? const SizedBox(
-                          height: 22,
-                          width: 22,
-                          child: CircularProgressIndicator(
-                              strokeWidth: 2, color: Colors.white),
-                        )
-                      : Text(_isSignUp ? 'Create account' : 'Log in'),
-                ),
-                const SizedBox(height: 16),
-                Row(
-                  children: const [
-                    Expanded(child: Divider()),
-                    Padding(
-                      padding: EdgeInsets.symmetric(horizontal: 8),
-                      child: Text('or', style: TextStyle(color: AppColors.textGrey)),
-                    ),
-                    Expanded(child: Divider()),
-                  ],
-                ),
-                const SizedBox(height: 16),
+                // Both sign-in options sit BELOW the Terms checkbox (which gates
+                // them) and ABOVE nothing else — Google is not left after the
+                // Create-account button.
                 OutlinedButton.icon(
                   onPressed:
                       _busy || (_isSignUp && !_agreed) ? null : _google,
@@ -290,6 +270,29 @@ class _LoginScreenState extends State<LoginScreen> {
                     minimumSize: const Size.fromHeight(48),
                     side: const BorderSide(color: AppColors.border),
                   ),
+                ),
+                const SizedBox(height: 16),
+                Row(
+                  children: const [
+                    Expanded(child: Divider()),
+                    Padding(
+                      padding: EdgeInsets.symmetric(horizontal: 8),
+                      child: Text('or', style: TextStyle(color: AppColors.textGrey)),
+                    ),
+                    Expanded(child: Divider()),
+                  ],
+                ),
+                const SizedBox(height: 16),
+                ElevatedButton(
+                  onPressed: _busy || (_isSignUp && !_agreed) ? null : _submit,
+                  child: _busy
+                      ? const SizedBox(
+                          height: 22,
+                          width: 22,
+                          child: CircularProgressIndicator(
+                              strokeWidth: 2, color: Colors.white),
+                        )
+                      : Text(_isSignUp ? 'Create account' : 'Log in'),
                 ),
                 const SizedBox(height: 8),
                 TextButton(

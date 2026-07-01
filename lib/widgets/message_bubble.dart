@@ -65,8 +65,26 @@ class MessageBubble extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final align = isMine ? CrossAxisAlignment.end : CrossAxisAlignment.start;
-    final bubbleColor = isMine ? AppColors.primary : AppColors.card;
-    final textColor = isMine ? Colors.white : AppColors.textDark;
+    // Colour the whole bubble by the side the sender is arguing:
+    //   green = For (support), red = Against (oppose).
+    // Neutral (e.g. old "just watching" messages) keeps the default styling.
+    final Color bubbleColor;
+    final Color textColor;
+    switch (message.stance) {
+      case Stance.forSide:
+        bubbleColor = AppColors.forSide; // green
+        textColor = Colors.white;
+        break;
+      case Stance.againstSide:
+        bubbleColor = AppColors.againstSide; // red
+        textColor = Colors.white;
+        break;
+      case Stance.neutral:
+        bubbleColor = isMine ? AppColors.primary : AppColors.card;
+        textColor = isMine ? Colors.white : AppColors.textDark;
+        break;
+    }
+    final onColouredBubble = bubbleColor != AppColors.card;
     final counts = message.reactionCounts;
     final mine = message.myReaction(myUid);
 
@@ -106,7 +124,7 @@ class MessageBubble extends StatelessWidget {
                     decoration: BoxDecoration(
                       color: bubbleColor,
                       borderRadius: BorderRadius.circular(14),
-                      border: isMine
+                      border: onColouredBubble
                           ? null
                           : const Border.fromBorderSide(
                               BorderSide(color: AppColors.border)),
@@ -116,11 +134,11 @@ class MessageBubble extends StatelessWidget {
                       mainAxisSize: MainAxisSize.min,
                       children: [
                         if (message.isReply) ...[
-                          _QuotedReply(message: message, onDark: isMine),
+                          _QuotedReply(message: message, onDark: onColouredBubble),
                           const SizedBox(height: 6),
                         ],
                         if (message.stance != Stance.neutral) ...[
-                          _StanceTag(stance: message.stance, onDark: isMine),
+                          _StanceTag(stance: message.stance, onDark: onColouredBubble),
                           const SizedBox(height: 4),
                         ],
                         Text(

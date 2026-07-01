@@ -25,7 +25,8 @@ class RoomsListScreen extends StatefulWidget {
   State<RoomsListScreen> createState() => _RoomsListScreenState();
 }
 
-class _RoomsListScreenState extends State<RoomsListScreen> {
+class _RoomsListScreenState extends State<RoomsListScreen>
+    with WidgetsBindingObserver {
   final _rooms = RoomService();
   final _auth = AuthService();
   final _daily = DailyTopicService();
@@ -43,16 +44,36 @@ class _RoomsListScreenState extends State<RoomsListScreen> {
   @override
   void initState() {
     super.initState();
+    WidgetsBinding.instance.addObserver(this);
     final uid = _auth.currentUser?.uid;
     if (uid != null) {
       _hiddenSub = _rooms.watchHiddenRoomIds(uid).listen((ids) {
         if (mounted) setState(() => _hidden = ids);
       });
     }
+    // Check whether they've verified their email since the app was opened.
+    _refreshVerification();
+  }
+
+  @override
+  void didChangeAppLifecycleState(AppLifecycleState state) {
+    // Coming back from the email app? Re-check so the "verify email" banner
+    // disappears once they've actually verified.
+    if (state == AppLifecycleState.resumed) _refreshVerification();
+  }
+
+  /// Reloads the user from the server and rebuilds, so [emailVerified] (and thus
+  /// the banner's visibility) reflects the latest state. Best-effort.
+  Future<void> _refreshVerification() async {
+    try {
+      await _auth.reloadUser();
+      if (mounted) setState(() {});
+    } catch (_) {/* offline or not signed in — ignore */}
   }
 
   @override
   void dispose() {
+    WidgetsBinding.instance.removeObserver(this);
     _hiddenSub?.cancel();
     _searchController.dispose();
     super.dispose();
