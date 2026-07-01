@@ -4,6 +4,7 @@ import '../models/message.dart';
 import '../models/room.dart';
 import '../services/auth_service.dart';
 import '../services/moderation_service.dart';
+import '../services/room_notify_service.dart';
 import '../services/room_service.dart';
 import '../theme.dart';
 import '../widgets/join_stance_dialog.dart';
@@ -39,11 +40,36 @@ class _ChatRoomScreenState extends State<ChatRoomScreen> {
   bool _sending = false;
   Set<String> _blocked = {};
   Message? _replyingTo; // the message currently being replied to, if any
+  bool _notifyOn = false; // notify me about new messages in this room
 
   @override
   void initState() {
     super.initState();
+    // Tell the push handler this room is on screen, so it won't pop a
+    // notification for a message we can already see.
+    RoomNotifyService.activeRoomId = widget.room.id;
     _loadBlocked();
+    _loadNotify();
+  }
+
+  Future<void> _loadNotify() async {
+    final on = await RoomNotifyService.isOn(widget.room.id);
+    if (mounted) setState(() => _notifyOn = on);
+  }
+
+  /// Flips the per-room notification toggle (subscribes/unsubscribes the phone).
+  Future<void> _toggleNotify() async {
+    final next = !_notifyOn;
+    setState(() => _notifyOn = next);
+    try {
+      await RoomNotifyService.setOn(widget.room.id, next);
+      _toast(next
+          ? 'Notifications on for this room 🔔'
+          : 'Notifications off for this room');
+    } catch (_) {
+      if (mounted) setState(() => _notifyOn = !next); // revert on failure
+      _toast('Could not update notifications — check your internet.');
+    }
   }
 
   Future<void> _toggleReaction(Message m, String emoji) async {
@@ -83,6 +109,9 @@ class _ChatRoomScreenState extends State<ChatRoomScreen> {
 
   @override
   void dispose() {
+    if (RoomNotifyService.activeRoomId == widget.room.id) {
+      RoomNotifyService.activeRoomId = null;
+    }
     _input.dispose();
     _scroll.dispose();
     super.dispose();
@@ -124,6 +153,25 @@ class _ChatRoomScreenState extends State<ChatRoomScreen> {
     );
   }
 
+  /// The reply icon revealed behind a message as it's swiped sideways.
+  Widget _swipeReplyHint(Alignment alignment) {
+    return Container(
+      alignment: alignment,
+      padding: const EdgeInsets.symmetric(horizontal: 24),
+      child: const Icon(Icons.reply, color: AppColors.secondary),
+    );
+  }
+
+  /// Begins replying to a message. Only debaters (For/Against) can reply —
+  /// someone who is "just watching" is nudged to pick a side first.
+  void _startReply(Message m) {
+    if (_stance == Stance.neutral) {
+      _toast("You're just watching — switch to For or Against to reply.");
+      return;
+    }
+    setState(() => _replyingTo = m);
+  }
+
   /// Long-press menu on a message: delete your own, or report/block others.
   void _showMessageActions(Message m) {
     final isMine = m.senderId == _auth.currentUser?.uid;
@@ -139,7 +187,7 @@ class _ChatRoomScreenState extends State<ChatRoomScreen> {
                 title: const Text('Reply'),
                 onTap: () {
                   Navigator.pop(sheetContext);
-                  setState(() => _replyingTo = m);
+                  _startReply(m);
                 },
               ),
               if (isMine)
@@ -237,6 +285,18 @@ class _ChatRoomScreenState extends State<ChatRoomScreen> {
           ],
         ),
         actions: [
+          IconButton(
+            tooltip: _notifyOn
+                ? 'Notifications on — tap to turn off'
+                : 'Get notified of new messages',
+            onPressed: _toggleNotify,
+            icon: Icon(
+              _notifyOn
+                  ? Icons.notifications_active
+                  : Icons.notifications_none,
+              color: Colors.white,
+            ),
+          ),
           TextButton.icon(
             onPressed: _changeStance,
             icon: const Icon(Icons.swap_horiz, color: Colors.white, size: 18),
@@ -290,13 +350,26 @@ class _ChatRoomScreenState extends State<ChatRoomScreen> {
                   itemCount: messages.length,
                   itemBuilder: (context, i) {
                     final m = messages[i];
-                    return GestureDetector(
-                      onLongPress: () => _showMessageActions(m),
-                      child: MessageBubble(
-                        message: m,
-                        isMine: m.senderId == myUid,
-                        myUid: myUid,
-                        onReact: (emoji) => _toggleReaction(m, emoji),
+                    // Swipe a message sideways to reply to it; long-press still
+                    // opens the full menu (reply / react / report / block).
+                    return Dismissible(
+                      key: ValueKey(m.id),
+                      direction: DismissDirection.horizontal,
+                      background: _swipeReplyHint(Alignment.centerLeft),
+                      secondaryBackground:
+                          _swipeReplyHint(Alignment.centerRight),
+                      confirmDismiss: (_) async {
+                        _startReply(m);
+                        return false; // never actually remove the message
+                      },
+                      child: GestureDetector(
+                        onLongPress: () => _showMessageActions(m),
+                        child: MessageBubble(
+                          message: m,
+                          isMine: m.senderId == myUid,
+                          myUid: myUid,
+                          onReact: (emoji) => _toggleReaction(m, emoji),
+                        ),
                       ),
                     );
                   },
@@ -304,17 +377,23 @@ class _ChatRoomScreenState extends State<ChatRoomScreen> {
               },
             ),
           ),
-          if (_replyingTo != null)
-            _ReplyPreviewBar(
-              message: _replyingTo!,
-              onCancel: () => setState(() => _replyingTo = null),
+          // Only debaters (For / Against) can type. A "just watching" user
+          // sees a gentle prompt to pick a side instead of the input box.
+          if (_stance == Stance.neutral)
+            _WatchingBar(onPickSide: _changeStance)
+          else ...[
+            if (_replyingTo != null)
+              _ReplyPreviewBar(
+                message: _replyingTo!,
+                onCancel: () => setState(() => _replyingTo = null),
+              ),
+            _InputBar(
+              controller: _input,
+              stance: _stance,
+              sending: _sending,
+              onSend: _send,
             ),
-          _InputBar(
-            controller: _input,
-            stance: _stance,
-            sending: _sending,
-            onSend: _send,
-          ),
+          ],
         ],
       ),
     );
@@ -397,6 +476,48 @@ class _TopicBanner extends StatelessWidget {
             ),
           ),
         ],
+      ),
+    );
+  }
+}
+
+/// Shown instead of the input box when the user is "just watching". Tapping it
+/// opens the pick-a-side chooser so they can join the debate and start typing.
+class _WatchingBar extends StatelessWidget {
+  final VoidCallback onPickSide;
+  const _WatchingBar({required this.onPickSide});
+
+  @override
+  Widget build(BuildContext context) {
+    return SafeArea(
+      top: false,
+      child: Container(
+        decoration: const BoxDecoration(
+          color: Colors.white,
+          border: Border(top: BorderSide(color: AppColors.border)),
+        ),
+        padding: const EdgeInsets.fromLTRB(16, 10, 16, 10),
+        child: Row(
+          children: [
+            const Icon(Icons.visibility_outlined,
+                size: 20, color: AppColors.textGrey),
+            const SizedBox(width: 10),
+            const Expanded(
+              child: Text(
+                "You're just watching. Pick a side to join in.",
+                style: TextStyle(fontSize: 13, color: AppColors.textGrey),
+              ),
+            ),
+            const SizedBox(width: 8),
+            ElevatedButton(
+              onPressed: onPickSide,
+              style: ElevatedButton.styleFrom(
+                visualDensity: VisualDensity.compact,
+              ),
+              child: const Text('Pick a side'),
+            ),
+          ],
+        ),
       ),
     );
   }

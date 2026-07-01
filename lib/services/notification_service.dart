@@ -28,10 +28,19 @@ class NotificationService {
       await _plugin.initialize(
         settings: const InitializationSettings(android: android, iOS: ios),
       );
-      await _plugin
-          .resolvePlatformSpecificImplementation<
-              AndroidFlutterLocalNotificationsPlugin>()
-          ?.requestNotificationsPermission();
+      final androidImpl = _plugin.resolvePlatformSpecificImplementation<
+          AndroidFlutterLocalNotificationsPlugin>();
+      await androidImpl?.requestNotificationsPermission();
+      // Pre-create the channel used for pushed room messages, so notifications
+      // that arrive while the app is closed use the right (high) importance.
+      await androidImpl?.createNotificationChannel(
+        const AndroidNotificationChannel(
+          'room_messages',
+          'Room messages',
+          description: 'New messages in rooms you follow',
+          importance: Importance.high,
+        ),
+      );
       await _plugin
           .resolvePlatformSpecificImplementation<
               IOSFlutterLocalNotificationsPlugin>()
@@ -83,6 +92,35 @@ class NotificationService {
       }
     } catch (_) {
       // Never let a scheduling failure bubble up.
+    }
+  }
+
+  /// Shows a notification for a pushed room message while the app is in the
+  /// foreground. (When the app is in the background or closed, the system shows
+  /// the push automatically.) Best-effort — never throws.
+  static Future<void> showRoomMessage(String title, String body) async {
+    if (!_ready) return;
+    try {
+      const details = NotificationDetails(
+        android: AndroidNotificationDetails(
+          'room_messages',
+          'Room messages',
+          channelDescription: 'New messages in rooms you follow',
+          importance: Importance.high,
+          priority: Priority.high,
+        ),
+        iOS: DarwinNotificationDetails(),
+      );
+      // A rolling id so several messages don't overwrite one another.
+      final id = DateTime.now().millisecondsSinceEpoch ~/ 1000 & 0x7fffffff;
+      await _plugin.show(
+        id: id,
+        title: title,
+        body: body,
+        notificationDetails: details,
+      );
+    } catch (_) {
+      // Optional feature — ignore any failure.
     }
   }
 }

@@ -43,7 +43,8 @@ class _LoginScreenState extends State<LoginScreen> {
   }
 
   Future<void> _google() async {
-    if (!_agreed) {
+    // Terms only need to be accepted when creating a new account, not on login.
+    if (_isSignUp && !_agreed) {
       setState(() => _generalError =
           'Please accept the Terms of Service and Privacy Policy first.');
       return;
@@ -222,11 +223,15 @@ class _LoginScreenState extends State<LoginScreen> {
                       textAlign: TextAlign.center,
                       style: const TextStyle(color: AppColors.primary)),
                 ],
-                const SizedBox(height: 14),
-                _AgreementCheckbox(
-                  value: _agreed,
-                  onChanged: (v) => setState(() => _agreed = v ?? false),
-                ),
+                // The Terms & Privacy agreement is only shown (and required)
+                // when creating a new account — not when logging back in.
+                if (_isSignUp) ...[
+                  const SizedBox(height: 14),
+                  _AgreementCheckbox(
+                    value: _agreed,
+                    onChanged: (v) => setState(() => _agreed = v ?? false),
+                  ),
+                ],
                 const SizedBox(height: 14),
                 ElevatedButton(
                   onPressed: _busy || (_isSignUp && !_agreed) ? null : _submit,
@@ -252,7 +257,8 @@ class _LoginScreenState extends State<LoginScreen> {
                 ),
                 const SizedBox(height: 16),
                 OutlinedButton.icon(
-                  onPressed: _busy || !_agreed ? null : _google,
+                  onPressed:
+                      _busy || (_isSignUp && !_agreed) ? null : _google,
                   icon: const Text('G',
                       style: TextStyle(
                           fontSize: 18,

@@ -2,6 +2,24 @@
 
 All notable changes to Arena will be documented in this file.
 
+## [1.4.0] - July 1, 2026
+
+### ✨ Added
+- **Per-room notifications (🔔).** Each debate room now has a bell in its top
+  bar (default OFF). Turn it on to get a notification for every new message in
+  that room — even when the app is closed. Delivery is powered by a new Firebase
+  Cloud Function (`functions/`) that pushes to everyone subscribed to the room's
+  FCM topic. Requires a one-time deploy on the Blaze plan — see
+  `NOTIFICATIONS_SETUP.md`.
+
+### ✨ Improved
+- **Terms & Conditions are only required when creating an account**, not when
+  logging in (email or Google).
+- **"Just watching" users can no longer type.** The message box is replaced by a
+  "Pick a side to join in" prompt until they choose For or Against.
+- **Swipe a message left or right to reply** to it (long-press still opens the
+  full reply / react / report / block menu).
+
 ## [1.3.0] - June 29, 2026
 
 ### ✨ Added
