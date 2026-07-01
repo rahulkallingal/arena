@@ -22,6 +22,7 @@ class _LoginScreenState extends State<LoginScreen> {
   bool _isSignUp = true; // start on "create account"
   bool _busy = false;
   bool _agreed = false; // ticked the Terms & Privacy checkbox
+  bool _obscure = true; // hide the password characters (toggle with the eye)
   String? _generalError;
   String? _emailError;
   String? _passwordError;
@@ -108,9 +109,9 @@ class _LoginScreenState extends State<LoginScreen> {
       if (_isSignUp) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
-            content: Text('Verification email sent to $email — '
-                'please check your inbox.'),
-            duration: const Duration(seconds: 4),
+            content: Text('Verification email sent to $email — check your '
+                'inbox AND your spam/junk folder.'),
+            duration: const Duration(seconds: 6),
           ),
         );
       }
@@ -198,12 +199,15 @@ class _LoginScreenState extends State<LoginScreen> {
                     hintText: 'Email',
                     prefixIcon: const Icon(Icons.email_outlined),
                     errorText: _emailError,
+                    // Let long messages (e.g. "account already exists…") show in
+                    // full instead of being cut off with an ellipsis.
+                    errorMaxLines: 3,
                   ),
                 ),
                 const SizedBox(height: 12),
                 TextField(
                   controller: _password,
-                  obscureText: true,
+                  obscureText: _obscure,
                   textInputAction: TextInputAction.done,
                   onSubmitted: (_) => _submit(),
                   onChanged: (_) {
@@ -215,6 +219,16 @@ class _LoginScreenState extends State<LoginScreen> {
                     hintText: 'Password (6+ characters)',
                     prefixIcon: const Icon(Icons.lock_outline),
                     errorText: _passwordError,
+                    errorMaxLines: 3,
+                    // Tap the eye to show/hide the password so you can check for
+                    // typos.
+                    suffixIcon: IconButton(
+                      icon: Icon(_obscure
+                          ? Icons.visibility_outlined
+                          : Icons.visibility_off_outlined),
+                      tooltip: _obscure ? 'Show password' : 'Hide password',
+                      onPressed: () => setState(() => _obscure = !_obscure),
+                    ),
                   ),
                 ),
                 if (_generalError != null) ...[
@@ -259,12 +273,18 @@ class _LoginScreenState extends State<LoginScreen> {
                 OutlinedButton.icon(
                   onPressed:
                       _busy || (_isSignUp && !_agreed) ? null : _google,
-                  icon: const Text('G',
-                      style: TextStyle(
-                          fontSize: 18,
-                          fontWeight: FontWeight.bold,
-                          color: Color(0xFF4285F4))),
-                  label: const Text('Continue with Google'),
+                  icon: _busy
+                      ? const SizedBox(
+                          height: 18,
+                          width: 18,
+                          child: CircularProgressIndicator(strokeWidth: 2),
+                        )
+                      : const Text('G',
+                          style: TextStyle(
+                              fontSize: 18,
+                              fontWeight: FontWeight.bold,
+                              color: Color(0xFF4285F4))),
+                  label: Text(_busy ? 'Please wait…' : 'Continue with Google'),
                   style: OutlinedButton.styleFrom(
                     foregroundColor: AppColors.textDark,
                     minimumSize: const Size.fromHeight(48),

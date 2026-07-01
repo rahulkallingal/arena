@@ -492,29 +492,28 @@ class _WatchingBar extends StatelessWidget {
     return SafeArea(
       top: false,
       child: Container(
+        width: double.infinity,
         decoration: const BoxDecoration(
           color: Colors.white,
           border: Border(top: BorderSide(color: AppColors.border)),
         ),
-        padding: const EdgeInsets.fromLTRB(16, 10, 16, 10),
-        child: Row(
+        padding: const EdgeInsets.fromLTRB(16, 10, 16, 12),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
           children: [
-            const Icon(Icons.visibility_outlined,
-                size: 20, color: AppColors.textGrey),
-            const SizedBox(width: 10),
-            const Expanded(
-              child: Text(
-                "You're just watching. Pick a side to join in.",
-                style: TextStyle(fontSize: 13, color: AppColors.textGrey),
-              ),
+            const Text(
+              "You're just watching this debate.",
+              textAlign: TextAlign.center,
+              style: TextStyle(fontSize: 13, color: AppColors.textGrey),
             ),
-            const SizedBox(width: 8),
-            ElevatedButton(
-              onPressed: onPickSide,
-              style: ElevatedButton.styleFrom(
-                visualDensity: VisualDensity.compact,
+            const SizedBox(height: 8),
+            SizedBox(
+              width: double.infinity,
+              child: ElevatedButton.icon(
+                onPressed: onPickSide,
+                icon: const Icon(Icons.forum_outlined, size: 18),
+                label: const Text('Pick a side to join in'),
               ),
-              child: const Text('Pick a side'),
             ),
           ],
         ),

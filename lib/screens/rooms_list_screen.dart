@@ -177,7 +177,11 @@ class _RoomsListScreenState extends State<RoomsListScreen> {
                 try {
                   await _auth.sendEmailVerification();
                   messenger.showSnackBar(
-                    const SnackBar(content: Text('Verification email sent.')),
+                    const SnackBar(
+                      content: Text('Verification email sent — check your '
+                          'inbox and spam/junk folder.'),
+                      duration: Duration(seconds: 6),
+                    ),
                   );
                 } catch (_) {}
               },
@@ -476,7 +480,8 @@ class _VerifyEmailBanner extends StatelessWidget {
           const SizedBox(width: 8),
           const Expanded(
             child: Text(
-              'Please verify your email to secure your account.',
+              'Verify your email to secure your account. '
+              'Check your spam/junk folder too.',
               style: TextStyle(fontSize: 13, color: AppColors.textDark),
             ),
           ),
