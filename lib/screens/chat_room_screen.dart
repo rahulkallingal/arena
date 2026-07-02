@@ -41,6 +41,8 @@ class _ChatRoomScreenState extends State<ChatRoomScreen> {
   Set<String> _blocked = {};
   Message? _replyingTo; // the message currently being replied to, if any
   bool _notifyOn = false; // notify me about new messages in this room
+  int _messageLimit = 30; // how many recent messages to load (pagination)
+  String? _lastBottomMsgId; // auto-scroll only when a NEW message arrives
 
   @override
   void initState() {
@@ -151,6 +153,11 @@ class _ChatRoomScreenState extends State<ChatRoomScreen> {
       duration: const Duration(milliseconds: 250),
       curve: Curves.easeOut,
     );
+  }
+
+  /// Loads an older batch of messages (raises the live window's limit).
+  void _loadEarlier() {
+    setState(() => _messageLimit += 30);
   }
 
   /// The reply icon revealed behind a message as it's swiped sideways.
@@ -317,7 +324,8 @@ class _ChatRoomScreenState extends State<ChatRoomScreen> {
           _TopicBanner(topic: widget.room.topic),
           Expanded(
             child: StreamBuilder<List<Message>>(
-              stream: _rooms.watchMessages(widget.room.id),
+              stream:
+                  _rooms.watchMessages(widget.room.id, limit: _messageLimit),
               builder: (context, snapshot) {
                 if (snapshot.hasError) {
                   return const Center(child: Text('Could not load messages.'));
@@ -341,14 +349,34 @@ class _ChatRoomScreenState extends State<ChatRoomScreen> {
                     ),
                   );
                 }
-                // Jump to the newest message after the list builds.
-                WidgetsBinding.instance
-                    .addPostFrameCallback((_) => _jumpToBottom());
+                // Auto-jump to the newest message only when a NEW one arrives
+                // at the bottom (or on first load) — NOT when the user loads
+                // older messages, so their scroll position is preserved.
+                final bottomId = messages.last.id;
+                if (bottomId != _lastBottomMsgId) {
+                  _lastBottomMsgId = bottomId;
+                  WidgetsBinding.instance
+                      .addPostFrameCallback((_) => _jumpToBottom());
+                }
+                // If we filled the whole window there may be older messages.
+                final hasMore = snapshot.data!.length >= _messageLimit;
                 return ListView.builder(
                   controller: _scroll,
                   padding: const EdgeInsets.symmetric(vertical: 8),
-                  itemCount: messages.length,
-                  itemBuilder: (context, i) {
+                  itemCount: messages.length + (hasMore ? 1 : 0),
+                  itemBuilder: (context, index) {
+                    if (hasMore && index == 0) {
+                      return Center(
+                        child: Padding(
+                          padding: const EdgeInsets.all(8),
+                          child: TextButton(
+                            onPressed: _loadEarlier,
+                            child: const Text('Load earlier messages'),
+                          ),
+                        ),
+                      );
+                    }
+                    final i = hasMore ? index - 1 : index;
                     final m = messages[i];
                     // Swipe a message sideways to reply to it; long-press still
                     // opens the full menu (reply / react / report / block).

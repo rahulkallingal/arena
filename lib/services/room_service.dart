@@ -62,15 +62,23 @@ class RoomService {
     return room.passwordHash == hashPassword(password);
   }
 
-  /// Live list of messages in a room, oldest first (so the newest sits at the
-  /// bottom like a normal chat).
-  Stream<List<Message>> watchMessages(String roomId) {
+  /// Live list of the most recent [limit] messages in a room, returned oldest-
+  /// first so the newest sits at the bottom like a normal chat.
+  ///
+  /// Only watching the latest window (instead of the whole history) keeps
+  /// Firestore reads — and therefore cost — low even in rooms with thousands of
+  /// messages. Raise [limit] (see the chat screen's "Load earlier messages") to
+  /// pull in older messages.
+  Stream<List<Message>> watchMessages(String roomId, {int limit = 30}) {
     return _rooms
         .doc(roomId)
         .collection('messages')
-        .orderBy('createdAt', descending: false)
+        .orderBy('createdAt', descending: true) // newest first for the limit…
+        .limit(limit)
         .snapshots()
-        .map((snap) => snap.docs.map(Message.fromDoc).toList());
+        // …then flip back to oldest-first for display.
+        .map((snap) =>
+            snap.docs.map(Message.fromDoc).toList().reversed.toList());
   }
 
   /// Sends a message and bumps the room's lastActivity so it floats to the top.
