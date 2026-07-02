@@ -28,6 +28,15 @@ class _LoginScreenState extends State<LoginScreen> {
   bool get _busy => _submitting || _googling; // either action running
   bool _agreed = false; // ticked the Terms & Privacy checkbox
   bool _obscure = true; // hide the password characters (toggle with the eye)
+
+  // DEV-ONLY admin quick-login. These come from --dart-define at build time, so
+  // they are NOT in the source code and are EMPTY (button hidden, nothing
+  // compiled in) unless a build explicitly passes them. Public/Play Store builds
+  // are made WITHOUT these defines, so this never ships. See ADMIN_LOGIN note.
+  static const _adminEmail = String.fromEnvironment('ADMIN_EMAIL');
+  static const _adminPassword = String.fromEnvironment('ADMIN_PASSWORD');
+  bool get _adminEnabled =>
+      _adminEmail.isNotEmpty && _adminPassword.isNotEmpty;
   String? _generalError;
   String? _emailError;
   String? _passwordError;
@@ -46,6 +55,25 @@ class _LoginScreenState extends State<LoginScreen> {
     _emailError = null;
     _passwordError = null;
     _nameError = null;
+  }
+
+  /// DEV-ONLY: signs in instantly with the admin account baked in at build time.
+  Future<void> _adminLogin() async {
+    setState(() {
+      _submitting = true;
+      _clearErrors();
+    });
+    try {
+      await _auth.logIn(email: _adminEmail, password: _adminPassword);
+      if (!mounted) return;
+      Navigator.of(context).pushReplacement(
+        MaterialPageRoute(builder: (_) => const RoomsListScreen()),
+      );
+    } catch (e) {
+      setState(() => _generalError = AuthService.friendlyError(e));
+    } finally {
+      if (mounted) setState(() => _submitting = false);
+    }
   }
 
   /// Emails a password-reset link to whatever is typed in the email field.
@@ -352,6 +380,18 @@ class _LoginScreenState extends State<LoginScreen> {
                     style: const TextStyle(color: AppColors.secondary),
                   ),
                 ),
+                // DEV-ONLY: appears only when this build was made with the admin
+                // credentials (--dart-define). Never present in public builds.
+                if (_adminEnabled) ...[
+                  const SizedBox(height: 4),
+                  TextButton.icon(
+                    onPressed: _busy ? null : _adminLogin,
+                    icon: const Icon(Icons.bolt, size: 18),
+                    label: const Text('Admin quick login (dev)'),
+                    style: TextButton.styleFrom(
+                        foregroundColor: AppColors.textGrey),
+                  ),
+                ],
               ],
             ),
           ),
