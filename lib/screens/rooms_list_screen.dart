@@ -94,8 +94,10 @@ class _RoomsListScreenState extends State<RoomsListScreen>
     if (confirm != true) return;
     await _auth.signOut();
     if (mounted) {
-      Navigator.of(context).pushReplacement(
-        MaterialPageRoute(builder: (_) => const LoginScreen()),
+      Navigator.of(context).pushAndRemoveUntil(
+        MaterialPageRoute(
+            builder: (_) => const LoginScreen(startInSignUp: false)),
+        (route) => false,
       );
     }
   }

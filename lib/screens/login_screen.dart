@@ -7,7 +7,10 @@ import 'rooms_list_screen.dart';
 
 /// Sign up / log in with email + password. Toggles between the two modes.
 class LoginScreen extends StatefulWidget {
-  const LoginScreen({super.key});
+  /// Whether to open on the "Create account" view. After logout we pass false so
+  /// returning users land on the Log in form.
+  final bool startInSignUp;
+  const LoginScreen({super.key, this.startInSignUp = true});
 
   @override
   State<LoginScreen> createState() => _LoginScreenState();
@@ -19,8 +22,10 @@ class _LoginScreenState extends State<LoginScreen> {
   final _password = TextEditingController();
   final _auth = AuthService();
 
-  bool _isSignUp = true; // start on "create account"
-  bool _busy = false;
+  late bool _isSignUp = widget.startInSignUp;
+  bool _submitting = false; // email create/login in progress
+  bool _googling = false; // Google sign-in in progress
+  bool get _busy => _submitting || _googling; // either action running
   bool _agreed = false; // ticked the Terms & Privacy checkbox
   bool _obscure = true; // hide the password characters (toggle with the eye)
   String? _generalError;
@@ -52,7 +57,7 @@ class _LoginScreenState extends State<LoginScreen> {
           'Enter your email above first, then tap "Forgot password".');
       return;
     }
-    setState(() => _busy = true);
+    setState(() => _submitting = true);
     try {
       await _auth.sendPasswordReset(email);
       if (!mounted) return;
@@ -66,7 +71,7 @@ class _LoginScreenState extends State<LoginScreen> {
     } catch (e) {
       setState(() => _generalError = AuthService.friendlyError(e));
     } finally {
-      if (mounted) setState(() => _busy = false);
+      if (mounted) setState(() => _submitting = false);
     }
   }
 
@@ -78,13 +83,13 @@ class _LoginScreenState extends State<LoginScreen> {
       return;
     }
     setState(() {
-      _busy = true;
+      _googling = true;
       _clearErrors();
     });
     try {
       final ok = await _auth.signInWithGoogle();
       if (!ok) {
-        if (mounted) setState(() => _busy = false);
+        if (mounted) setState(() => _googling = false);
         return; // user cancelled
       }
       if (!mounted) return;
@@ -94,7 +99,7 @@ class _LoginScreenState extends State<LoginScreen> {
     } catch (e) {
       setState(() => _generalError = AuthService.friendlyError(e));
     } finally {
-      if (mounted) setState(() => _busy = false);
+      if (mounted) setState(() => _googling = false);
     }
   }
 
@@ -125,7 +130,7 @@ class _LoginScreenState extends State<LoginScreen> {
       return;
     }
 
-    setState(() => _busy = true);
+    setState(() => _submitting = true);
     try {
       if (_isSignUp) {
         await _auth.signUp(email: email, password: password, name: name);
@@ -162,7 +167,7 @@ class _LoginScreenState extends State<LoginScreen> {
         }
       });
     } finally {
-      if (mounted) setState(() => _busy = false);
+      if (mounted) setState(() => _submitting = false);
     }
   }
 
@@ -290,7 +295,7 @@ class _LoginScreenState extends State<LoginScreen> {
                 OutlinedButton.icon(
                   onPressed:
                       _busy || (_isSignUp && !_agreed) ? null : _google,
-                  icon: _busy
+                  icon: _googling
                       ? const SizedBox(
                           height: 18,
                           width: 18,
@@ -301,7 +306,8 @@ class _LoginScreenState extends State<LoginScreen> {
                               fontSize: 18,
                               fontWeight: FontWeight.bold,
                               color: Color(0xFF4285F4))),
-                  label: Text(_busy ? 'Please wait…' : 'Continue with Google'),
+                  label:
+                      Text(_googling ? 'Please wait…' : 'Continue with Google'),
                   style: OutlinedButton.styleFrom(
                     foregroundColor: AppColors.textDark,
                     minimumSize: const Size.fromHeight(48),
@@ -322,7 +328,7 @@ class _LoginScreenState extends State<LoginScreen> {
                 const SizedBox(height: 16),
                 ElevatedButton(
                   onPressed: _busy || (_isSignUp && !_agreed) ? null : _submit,
-                  child: _busy
+                  child: _submitting
                       ? const SizedBox(
                           height: 22,
                           width: 22,
