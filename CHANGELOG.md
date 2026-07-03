@@ -2,6 +2,47 @@
 
 All notable changes to Arena will be documented in this file.
 
+## [1.5.0] - July 3, 2026
+
+### ✨ Added
+- **Forgot password** — a "Forgot password?" link on the login screen emails a
+  reset link.
+- **Change password** in-app — the account menu (top-right) has "Change
+  password" for email/password accounts (re-authenticates, then updates).
+- **Chat colour-coding by side** — For (support) messages are **green**, Against
+  (oppose) are **red**, for everyone, so sides are visible at a glance.
+- **Message pagination** — chat loads only the latest ~30 messages plus a "Load
+  earlier messages" button, keeping Firestore reads (and cost) low in busy rooms.
+- **(Dev only) Admin quick-login** — a one-tap login button that appears ONLY in
+  builds made with `--dart-define ADMIN_EMAIL/ADMIN_PASSWORD`. Public builds omit
+  the defines, so it's never shipped and no credentials are compiled in.
+
+### ✨ Improved
+- **Login layout** — "Continue with Google" now sits above the Create-account
+  button (not after it); the Terms checkbox is above both and shows only on
+  signup.
+- **Password show/hide** eye on the password field.
+- **Auth error messages show in full** (no longer cut off after one line).
+- **Verify-email banner clears automatically** once the email is verified (the
+  home screen re-checks on resume).
+- **"Check your spam/junk folder"** added to the verification + reset messages.
+- **After logout you land on the Login view** (not Create account).
+- **The two auth buttons load independently** — tapping Create/Log-in no longer
+  also spins the Google button, and vice-versa.
+
+### 🐞 Fixed
+- **"Just watching" bar** was rendering as vertical text — rebuilt as a robust
+  full-width bar.
+- **Email/password login hang** — sign-in would spin forever. Cause: builds used
+  a stale `google-services.json` after a signing fingerprint was added. Fixed by
+  re-pulling the live config (`firebase apps:sdkconfig`) and rebuilding. Google
+  sign-in works once the app's SHA-1/SHA-256 are registered in Firebase.
+
+### 🚀 Ops
+- Per-room notifications are **deployed and live** (Cloud Function
+  `notifyRoomOnNewMessage`, region asia-south1) on the **Blaze** plan (free at
+  current scale; a cleanup policy keeps container storage from accruing cost).
+
 ## [1.4.0] - July 1, 2026
 
 ### ✨ Added

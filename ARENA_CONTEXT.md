@@ -12,6 +12,47 @@
 - **How to work with Rahul:** plain language, no jargon, small numbered steps,
   explain each command before he runs it.
 
+## CURRENT STATUS (updated 2026-07-03)
+
+> This section is the up-to-date snapshot. The sections further down are older
+> background; when they disagree, trust this + `CHANGELOG.md` + `git log`.
+
+**Auth & accounts (Firebase project `arena-a049d`, on the Blaze plan):**
+- Email/password + Google sign-in + Terms/Privacy gating (Terms only on signup).
+- Forgot-password (login screen) and Change-password (account menu) are in.
+- Login layout: Google above Create-account; password show/hide; full error
+  text; verify-email banner auto-clears; logout lands on Login view.
+- **Google sign-in / login require the build's signing SHA-1 to be registered in
+  Firebase AND the current `google-services.json` in the build.** If the config
+  is stale after a fingerprint change, email/password login HANGS. Fix:
+  `firebase apps:sdkconfig ANDROID 1:958305310400:android:e5d31ab9d8711941107f25
+  --project arena-a049d` → save to `android/app/google-services.json` → rebuild.
+- This PC's debug keystore SHA-1 `7B:32:35:7A:1D:86:6F:A1:12:4B:D3:63:4D:42:AF:
+  B4:4D:B1:92:7C` (SHA-256 `80:AE:6F:…:12:89`) is registered. **Before Play
+  Store: make ONE real release keystore, register its SHA-1, use it everywhere.**
+
+**Chat:** live rooms/messages, For(green)/Against(red) colour-coding, swipe-to-
+reply, reactions, report/block/delete, per-room 🔔 notifications (Cloud Function
+`notifyRoomOnNewMessage` DEPLOYED & live, asia-south1). Messages are **paginated**
+(latest ~30 + "Load earlier") to keep Firestore cost low.
+
+**Dev admin login:** build with `--dart-define=ADMIN_EMAIL=cryptork97+admin@gmail.com
+--dart-define=ADMIN_PASSWORD=9633992347` to get a one-tap "Admin quick login"
+button. Public builds omit the defines (button hidden, no creds shipped).
+
+**Builds/distribution:** built on this Windows PC with the debug keystore (so
+installs need uninstall-first if a differently-signed copy is present). Latest
+APKs live in `C:\Users\rahul\Desktop\Apps\Apks\` and are mirrored to Google Drive
+`App APKs` via rclone (`rclone copy <apk> gdrive:"App APKs"`).
+
+**⚠️ Known bug (open):** tapping "Topic of the Day" shows "Could not open today's
+room" after the Firestore data was wiped — the daily room isn't re-creating.
+Needs a debug build to read the real Firestore error, then a fix.
+
+**Cost note:** Firestore free tier is 50k reads / 20k writes per day — free at a
+few users. Chat is read-heavy; pagination (done) keeps it cheap. Realtime
+Database is the cheaper option only if Arena reaches thousands of active users.
+
 ## What Arena Is
 A debate / discussion app. People join **chat rooms** to debate a topic.
 - Create a room: **public** or **private (password)**.
