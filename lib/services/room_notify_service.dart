@@ -23,6 +23,32 @@ class RoomNotifyService {
   static String topicFor(String roomId) =>
       'room_${roomId.replaceAll(RegExp(r'[^a-zA-Z0-9-_.~%]'), '_')}';
 
+  /// Each signed-in device subscribes to its own user topic so the Cloud
+  /// Function can push a "someone replied to you" alert to that specific person,
+  /// regardless of whether they follow the room. MUST match the Cloud Function.
+  static String userTopicFor(String uid) =>
+      'user_${uid.replaceAll(RegExp(r'[^a-zA-Z0-9-_.~%]'), '_')}';
+
+  /// Subscribes this device to the signed-in user's personal reply topic.
+  /// Best-effort — never throws (called at startup / on login).
+  static Future<void> subscribeUser(String uid) async {
+    try {
+      await FirebaseMessaging.instance.subscribeToTopic(userTopicFor(uid));
+    } catch (_) {
+      // Offline or messaging unavailable — the app must still work.
+    }
+  }
+
+  /// Unsubscribes this device from a user's reply topic (called on logout, so a
+  /// shared phone's next user doesn't receive the previous user's alerts).
+  static Future<void> unsubscribeUser(String uid) async {
+    try {
+      await FirebaseMessaging.instance.unsubscribeFromTopic(userTopicFor(uid));
+    } catch (_) {
+      // Best-effort.
+    }
+  }
+
   /// Whether notifications are currently on for [roomId].
   static Future<bool> isOn(String roomId) async {
     final prefs = await SharedPreferences.getInstance();

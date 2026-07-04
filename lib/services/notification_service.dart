@@ -41,6 +41,15 @@ class NotificationService {
           importance: Importance.high,
         ),
       );
+      // Replies directed at you (someone replied to your message).
+      await androidImpl?.createNotificationChannel(
+        const AndroidNotificationChannel(
+          'replies',
+          'Replies to you',
+          description: 'When someone replies to your message',
+          importance: Importance.high,
+        ),
+      );
       await _plugin
           .resolvePlatformSpecificImplementation<
               IOSFlutterLocalNotificationsPlugin>()
@@ -98,18 +107,29 @@ class NotificationService {
   /// Shows a notification for a pushed room message while the app is in the
   /// foreground. (When the app is in the background or closed, the system shows
   /// the push automatically.) Best-effort — never throws.
-  static Future<void> showRoomMessage(String title, String body) async {
+  static Future<void> showRoomMessage(String title, String body) =>
+      _showForeground('room_messages', 'Room messages',
+          'New messages in rooms you follow', title, body);
+
+  /// Foreground notification for a reply directed at you.
+  static Future<void> showReply(String title, String body) => _showForeground(
+      'replies', 'Replies to you', 'When someone replies to your message',
+      title, body);
+
+  /// Shared foreground-notification helper. Best-effort — never throws.
+  static Future<void> _showForeground(String channelId, String channelName,
+      String channelDesc, String title, String body) async {
     if (!_ready) return;
     try {
-      const details = NotificationDetails(
+      final details = NotificationDetails(
         android: AndroidNotificationDetails(
-          'room_messages',
-          'Room messages',
-          channelDescription: 'New messages in rooms you follow',
+          channelId,
+          channelName,
+          channelDescription: channelDesc,
           importance: Importance.high,
           priority: Priority.high,
         ),
-        iOS: DarwinNotificationDetails(),
+        iOS: const DarwinNotificationDetails(),
       );
       // A rolling id so several messages don't overwrite one another.
       final id = DateTime.now().millisecondsSinceEpoch ~/ 1000 & 0x7fffffff;

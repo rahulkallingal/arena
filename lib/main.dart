@@ -25,7 +25,27 @@ Future<void> main() async {
   await NotificationService.init();
   await NotificationService.scheduleDailyTopics();
   _setupPushNotifications();
+  _wireUserReplyTopic();
   runApp(const ArenaApp());
+}
+
+/// Subscribes each signed-in device to that user's personal reply topic, so
+/// "someone replied to you" pushes reach the right person — and unsubscribes on
+/// logout so a shared phone's next user doesn't inherit the alerts.
+String? _replyTopicUid;
+void _wireUserReplyTopic() {
+  try {
+    AuthService().authState().listen((user) async {
+      final uid = user?.uid;
+      if (uid == _replyTopicUid) return;
+      final previous = _replyTopicUid;
+      _replyTopicUid = uid;
+      if (previous != null) await RoomNotifyService.unsubscribeUser(previous);
+      if (uid != null) await RoomNotifyService.subscribeUser(uid);
+    });
+  } catch (_) {
+    // Push is optional — never block startup.
+  }
 }
 
 /// Wires up per-room push notifications. Best-effort — a failure here must never
@@ -37,9 +57,15 @@ void _setupPushNotifications() {
     // user is already looking at that very room.
     FirebaseMessaging.onMessage.listen((message) {
       final roomId = message.data['roomId'];
+      // If the user is already looking at that room they can see the message,
+      // so don't pop a redundant notification.
       if (roomId != null && roomId == RoomNotifyService.activeRoomId) return;
       final n = message.notification;
-      if (n != null) {
+      if (n == null) return;
+      if (message.data['type'] == 'reply') {
+        NotificationService.showReply(
+            n.title ?? 'Arena', n.body ?? 'Someone replied to you');
+      } else {
         NotificationService.showRoomMessage(
             n.title ?? 'Arena', n.body ?? 'New message');
       }

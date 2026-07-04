@@ -132,6 +132,36 @@ have a friend (or a second account on the web) post — you'll get the alert.
 
 ---
 
+## Updating — turning on "reply to your message" notifications
+
+Newer builds also notify you when **someone replies to your message** (even if
+you don't follow that room). The app side is already built; you just need to
+**re-upload the notification function once more** and rebuild the app.
+
+You've done all the one-time setup above already, so this is quick:
+
+1. Open **Command Prompt** and go to the Arena folder:
+   ```
+   cd C:\Users\rahul\Desktop\Apps\arena
+   ```
+2. Re-upload the function (same command as before):
+   ```
+   firebase deploy --only functions
+   ```
+   Wait for **✔ Deploy complete!**
+3. Rebuild the app onto your phone (see `TESTING.md`) so it starts subscribing
+   you to your personal reply alerts.
+
+**How to test it (needs two accounts):** on Phone A, post a message in a room.
+On Phone B (a different account), **swipe that message to reply** and send.
+Phone A should get a **"<name> replied to you"** notification — even if Phone A
+never tapped the room's 🔔 bell. (You won't get one for replying to yourself.)
+
+> Note: if you DO follow a room (🔔 on) and someone replies to you there, you may
+> get two alerts — the room alert and the reply alert. That's expected for now.
+
+---
+
 ## If something goes wrong
 
 - `firebase: command not found` → redo Step 3, then close and reopen Command

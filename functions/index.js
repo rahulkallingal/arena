@@ -20,6 +20,11 @@ function topicFor(roomId) {
   return "room_" + roomId.replace(/[^a-zA-Z0-9-_.~%]/g, "_");
 }
 
+// Must match RoomNotifyService.userTopicFor() in the Flutter app.
+function userTopicFor(uid) {
+  return "user_" + uid.replace(/[^a-zA-Z0-9-_.~%]/g, "_");
+}
+
 exports.notifyRoomOnNewMessage = onDocumentCreated(
   "rooms/{roomId}/messages/{messageId}",
   async (event) => {
@@ -57,6 +62,29 @@ exports.notifyRoomOnNewMessage = onDocumentCreated(
       });
     } catch (e) {
       console.error("Failed to send room notification:", e);
+    }
+
+    // If this message is a reply, also notify the author of the quoted message
+    // directly (via their personal user topic) — even if they don't follow the
+    // room. Skip when someone replies to their own message.
+    const replyToSenderId = msg.replyToSenderId;
+    if (replyToSenderId && replyToSenderId !== msg.senderId) {
+      try {
+        await getMessaging().send({
+          topic: userTopicFor(replyToSenderId),
+          notification: {
+            title: sender + " replied to you",
+            body: text.slice(0, 180),
+          },
+          data: { roomId: roomId, type: "reply" },
+          android: {
+            priority: "high",
+            notification: { channelId: "replies" },
+          },
+        });
+      } catch (e) {
+        console.error("Failed to send reply notification:", e);
+      }
     }
   }
 );

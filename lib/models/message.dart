@@ -24,6 +24,10 @@ class Message {
   final String? replyToText;
   final String? replyToSender;
 
+  /// The uid of the author of the quoted message. Stored so the Cloud Function
+  /// can push a "someone replied to you" notification to that specific user.
+  final String? replyToSenderId;
+
   Message({
     required this.id,
     required this.text,
@@ -35,6 +39,7 @@ class Message {
     this.replyToId,
     this.replyToText,
     this.replyToSender,
+    this.replyToSenderId,
   });
 
   bool get isReply => replyToId != null;
@@ -53,6 +58,7 @@ class Message {
       replyToId: d['replyToId'],
       replyToText: d['replyToText'],
       replyToSender: d['replyToSender'],
+      replyToSenderId: d['replyToSenderId'],
     );
   }
 
@@ -78,6 +84,7 @@ class Message {
         if (replyToId != null) 'replyToId': replyToId,
         if (replyToText != null) 'replyToText': replyToText,
         if (replyToSender != null) 'replyToSender': replyToSender,
+        if (replyToSenderId != null) 'replyToSenderId': replyToSenderId,
       };
 
   static Stance _stanceFromString(dynamic value) {

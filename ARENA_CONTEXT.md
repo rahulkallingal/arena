@@ -35,6 +35,12 @@
 reply, reactions, report/block/delete, per-room 🔔 notifications (Cloud Function
 `notifyRoomOnNewMessage` DEPLOYED & live, asia-south1). Messages are **paginated**
 (latest ~30 + "Load earlier") to keep Firestore cost low.
+- **Reply notifications (v1.6.0, needs redeploy):** when someone replies to your
+  message you get a personal "<name> replied to you" push, even if you don't
+  follow the room. Each device subscribes to topic `user_<uid>`; replies store
+  the quoted author's uid (`replyToSenderId`); the same Cloud Function pushes to
+  that user's topic (channel `replies`). Redeploy the function + rebuild to
+  activate — see `NOTIFICATIONS_SETUP.md`.
 
 **Dev admin login:** build with `--dart-define=ADMIN_EMAIL=cryptork97+admin@gmail.com
 --dart-define=ADMIN_PASSWORD=9633992347` to get a one-tap "Admin quick login"

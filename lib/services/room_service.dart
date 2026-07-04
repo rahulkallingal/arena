@@ -100,6 +100,7 @@ class RoomService {
       replyToId: replyTo?.id,
       replyToText: replyTo?.text,
       replyToSender: replyTo?.senderName,
+      replyToSenderId: replyTo?.senderId,
     );
     final batch = _db.batch();
     final msgRef = _rooms.doc(roomId).collection('messages').doc();

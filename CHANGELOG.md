@@ -2,6 +2,21 @@
 
 All notable changes to Arena will be documented in this file.
 
+## [1.6.0] - July 4, 2026
+
+### ✨ Added
+- **Reply notifications** — when someone **replies to your message** in a room,
+  you get a notification ("<name> replied to you"), even when the app is closed
+  and **even if you don't follow that room**. Delivered by the same Cloud
+  Function, targeted to you personally.
+  - How it works: each signed-in device subscribes to a personal push topic
+    (`user_<uid>`); reply messages now store the quoted author's uid
+    (`replyToSenderId`); the Cloud Function pushes to that user's topic on a
+    reply. A new **"Replies to you"** notification channel keeps them separate
+    from room-follow alerts. You never get notified for replying to yourself.
+  - ⚠️ **Requires a redeploy** of the Cloud Function (`firebase deploy --only
+    functions`) and a rebuilt app — see `NOTIFICATIONS_SETUP.md` → "Updating".
+
 ## [1.5.0] - July 3, 2026
 
 ### ✨ Added
