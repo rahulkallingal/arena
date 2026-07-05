@@ -49,6 +49,24 @@ class RoomNotifyService {
     }
   }
 
+  /// Topic for everyone who has taken part in a room. The Cloud Function pushes
+  /// a "your debate is trending, jump back in" alert here when the room heats up,
+  /// to pull participants back — even if they never turned on the 🔔 bell.
+  /// MUST match the Cloud Function's participantsTopicFor().
+  static String participantsTopicFor(String roomId) =>
+      'room_participants_${roomId.replaceAll(RegExp(r'[^a-zA-Z0-9-_.~%]'), '_')}';
+
+  /// Subscribes this device to a room's "trending" re-engagement topic. Called
+  /// when the user opens/takes part in a room. Best-effort — never throws.
+  static Future<void> subscribeParticipant(String roomId) async {
+    try {
+      await FirebaseMessaging.instance
+          .subscribeToTopic(participantsTopicFor(roomId));
+    } catch (_) {
+      // Offline / messaging unavailable — must not break the chat.
+    }
+  }
+
   /// Whether notifications are currently on for [roomId].
   static Future<bool> isOn(String roomId) async {
     final prefs = await SharedPreferences.getInstance();

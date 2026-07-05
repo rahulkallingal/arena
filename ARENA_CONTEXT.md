@@ -41,6 +41,15 @@ reply, reactions, report/block/delete, per-room 🔔 notifications (Cloud Functi
   the quoted author's uid (`replyToSenderId`); the same Cloud Function pushes to
   that user's topic (channel `replies`). Redeploy the function + rebuild to
   activate — see `NOTIFICATIONS_SETUP.md`.
+- **Trending-debate push (v1.7.0, needs redeploy):** when a room bursts past ~20
+  messages in 30 min, participants (topic `room_participants_<roomId>`, joined on
+  room open) get a catchy "on fire, jump back in" push (channel `trending`,
+  3-hour per-room cooldown). Detection + send are in `notifyRoomOnNewMessage`.
+- **Admin "push trending topic" (v1.7.0):** admin (`cryptork97@gmail.com`) box on
+  the rooms list writes `config/dailyOverride` {topic, date, hour, minute}; each
+  phone's `scheduleDailyTopics` reads it and overrides that day's push
+  (local-override approach). Needs the updated `firestore.rules` (config/*)
+  PUBLISHED. Fallback = hardcoded daily topics.
 
 **Dev admin login:** build with `--dart-define=ADMIN_EMAIL=cryptork97+admin@gmail.com
 --dart-define=ADMIN_PASSWORD=9633992347` to get a one-tap "Admin quick login"

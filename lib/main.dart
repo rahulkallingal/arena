@@ -62,12 +62,18 @@ void _setupPushNotifications() {
       if (roomId != null && roomId == RoomNotifyService.activeRoomId) return;
       final n = message.notification;
       if (n == null) return;
-      if (message.data['type'] == 'reply') {
-        NotificationService.showReply(
-            n.title ?? 'Arena', n.body ?? 'Someone replied to you');
-      } else {
-        NotificationService.showRoomMessage(
-            n.title ?? 'Arena', n.body ?? 'New message');
+      switch (message.data['type']) {
+        case 'reply':
+          NotificationService.showReply(
+              n.title ?? 'Arena', n.body ?? 'Someone replied to you');
+          break;
+        case 'trending':
+          NotificationService.showTrending(
+              n.title ?? 'Arena', n.body ?? 'A debate you joined is on fire 🔥');
+          break;
+        default:
+          NotificationService.showRoomMessage(
+              n.title ?? 'Arena', n.body ?? 'New message');
       }
     });
   } catch (_) {

@@ -2,6 +2,8 @@ import 'package:flutter_local_notifications/flutter_local_notifications.dart';
 import 'package:timezone/data/latest_all.dart' as tzdata;
 import 'package:timezone/timezone.dart' as tz;
 
+import '../data/daily_topics.dart';
+import 'daily_override_service.dart';
 import 'daily_topic_service.dart';
 
 /// Local "topic of the day" notifications.
@@ -50,6 +52,15 @@ class NotificationService {
           importance: Importance.high,
         ),
       );
+      // A debate you took part in is heating up (trending re-engagement).
+      await androidImpl?.createNotificationChannel(
+        const AndroidNotificationChannel(
+          'trending',
+          'Trending debates',
+          description: 'When a debate you joined is heating up',
+          importance: Importance.high,
+        ),
+      );
       await _plugin
           .resolvePlatformSpecificImplementation<
               IOSFlutterLocalNotificationsPlugin>()
@@ -68,6 +79,9 @@ class NotificationService {
       await _plugin.cancelAll();
       final daily = DailyTopicService();
       final nowUtc = tz.TZDateTime.now(tz.UTC);
+      // An admin can override a specific day's topic (and its push time). Fetch
+      // it once; days without an override fall back to the hardcoded pool.
+      final override = await DailyOverrideService.get();
 
       const details = NotificationDetails(
         android: AndroidNotificationDetails(
@@ -82,11 +96,20 @@ class NotificationService {
 
       for (var i = 0; i < days; i++) {
         final date = DateTime.now().add(Duration(days: i));
-        final topic = daily.topicFor(date);
-        // Build the local 9 AM instant, then express it as a UTC instant so it
+        var useHour = hour;
+        var useMinute = 0;
+        DailyTopic topic;
+        if (override != null && override.appliesTo(date)) {
+          topic = DailyTopic(override.topic, override.category);
+          useHour = override.hour;
+          useMinute = override.minute;
+        } else {
+          topic = daily.topicFor(date);
+        }
+        // Build the local push instant, then express it as a UTC instant so it
         // fires at the right wall-clock time without needing the zone name.
         final localWhen =
-            DateTime(date.year, date.month, date.day, hour);
+            DateTime(date.year, date.month, date.day, useHour, useMinute);
         final whenUtc = tz.TZDateTime.from(localWhen.toUtc(), tz.UTC);
         if (!whenUtc.isAfter(nowUtc)) continue; // skip if already past
 
@@ -114,6 +137,11 @@ class NotificationService {
   /// Foreground notification for a reply directed at you.
   static Future<void> showReply(String title, String body) => _showForeground(
       'replies', 'Replies to you', 'When someone replies to your message',
+      title, body);
+
+  /// Foreground notification for a debate you joined that is now trending.
+  static Future<void> showTrending(String title, String body) => _showForeground(
+      'trending', 'Trending debates', 'When a debate you joined is heating up',
       title, body);
 
   /// Shared foreground-notification helper. Best-effort — never throws.

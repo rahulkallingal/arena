@@ -50,6 +50,9 @@ class _ChatRoomScreenState extends State<ChatRoomScreen> {
     // Tell the push handler this room is on screen, so it won't pop a
     // notification for a message we can already see.
     RoomNotifyService.activeRoomId = widget.room.id;
+    // Follow this room's "trending" re-engagement topic so we can pull the user
+    // back if the debate heats up later (separate from the 🔔 bell).
+    RoomNotifyService.subscribeParticipant(widget.room.id);
     _loadBlocked();
     _loadNotify();
   }

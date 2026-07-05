@@ -2,6 +2,28 @@
 
 All notable changes to Arena will be documented in this file.
 
+## [1.7.0] - July 5, 2026
+
+### ✨ Added
+- **Trending-debate notifications** — when a debate you took part in suddenly
+  heats up (a burst of ~20+ messages within 30 min), everyone who joined that
+  room gets a catchy "🔥 your debate is on fire — jump back in!" push to pull
+  them back, even without the 🔔 bell. Powered by the Cloud Function with a
+  3-hour per-room cooldown; new **"Trending debates"** notification channel;
+  suppressed while you're already in that room. Each device follows a
+  `room_participants_<roomId>` topic when it opens a room.
+- **Admin "push trending topic"** — signed in as the admin
+  (`cryptork97@gmail.com`), the rooms list shows a box to type a topic + a "use
+  default push time (9 AM)" toggle (or pick a custom time) + Push. It queues that
+  topic to **override the next daily topic** for everyone (stored at
+  `config/dailyOverride`); each phone reads it and swaps that day's push. No
+  admin topic set → the usual hardcoded topic is used.
+
+### ⚠️ Requires (one-time on Windows)
+- **Redeploy the Cloud Function** (`firebase deploy --only functions`) for the
+  trending push, and **publish the updated `firestore.rules`** (adds the
+  `config/*` rule) in the Firebase console. See `NOTIFICATIONS_SETUP.md`.
+
 ## [1.6.0] - July 4, 2026
 
 ### ✨ Added

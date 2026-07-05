@@ -13,6 +13,15 @@ service cloud.firestore {
       return request.auth != null;
     }
 
+    // App config, e.g. the admin's "topic of the day" override at
+    // config/dailyOverride. Everyone signed in reads it (each phone applies the
+    // override to its daily push); only the admin account may write it.
+    match /config/{doc} {
+      allow read: if signedIn();
+      allow write: if signedIn()
+                   && request.auth.token.email == 'cryptork97@gmail.com';
+    }
+
     // Moderation reports. Anyone signed in can file one; for safety nobody can
     // read or change them from the app (review them in the Firebase console).
     match /reports/{reportId} {

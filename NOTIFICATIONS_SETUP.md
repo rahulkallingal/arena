@@ -132,6 +132,36 @@ have a friend (or a second account on the web) post — you'll get the alert.
 
 ---
 
+## Updating — trending-debate + admin "push trending topic" (v1.7.0)
+
+Two more features are in the app but need the same one-time re-deploy:
+- **Trending-debate push** — pulls people back when a debate heats up.
+- **Admin "push trending topic"** — you (the admin) can override the day's topic.
+
+Do this once (same as the reply-notifications update):
+1. In **Command Prompt**:
+   ```
+   cd C:\Users\rahul\Desktop\Apps\arena
+   firebase deploy --only functions
+   ```
+   Wait for **✔ Deploy complete!**
+2. **Publish the Firestore rules** (needed for the admin topic override): open the
+   Firebase console → **Firestore → Rules**, paste the contents of
+   `firestore.rules` from the repo, and click **Publish**. (It adds a `config/*`
+   rule so every phone can read the admin's topic and only your admin account can
+   set it.)
+3. Rebuild the app onto the phone.
+
+**Admin topic:** sign in as `cryptork97@gmail.com` → a "Push trending topic" box
+appears on the rooms list. Type a topic, keep "default time (9 AM)" on (or pick a
+time), tap **Push** → it replaces the next daily topic for everyone.
+
+**Trending test:** get a room busy (~20 messages within 30 min); people who
+opened that room but aren't currently in it get a "🔥 on fire" push (max once
+per room every 3 hours).
+
+---
+
 ## Updating — turning on "reply to your message" notifications
 
 Newer builds also notify you when **someone replies to your message** (even if
