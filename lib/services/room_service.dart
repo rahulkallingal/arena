@@ -6,6 +6,22 @@ import 'package:crypto/crypto.dart';
 import '../models/message.dart';
 import '../models/room.dart';
 
+/// A live "who won" tally for a room: how many voted For vs Against, and which
+/// side (if any) the current user picked.
+class VoteTally {
+  final int forCount;
+  final int againstCount;
+  final String? myVote; // 'for', 'against', or null
+
+  const VoteTally({
+    required this.forCount,
+    required this.againstCount,
+    this.myVote,
+  });
+
+  int get total => forCount + againstCount;
+}
+
 /// Reads and writes debate rooms and their messages in Firestore.
 class RoomService {
   final _db = FirebaseFirestore.instance;
@@ -111,6 +127,42 @@ class RoomService {
       'lastActivity': FieldValue.serverTimestamp(),
     });
     await batch.commit();
+  }
+
+  // ---- "Who won?" voting -------------------------------------------------
+  CollectionReference<Map<String, dynamic>> _votesCol(String roomId) =>
+      _rooms.doc(roomId).collection('votes');
+
+  /// Casts or changes the current user's "who won" vote ([side] is 'for' or
+  /// 'against'). Voting the same side again removes the vote (toggle off).
+  Future<void> castVote({
+    required String roomId,
+    required String userId,
+    required String side,
+  }) async {
+    final ref = _votesCol(roomId).doc(userId);
+    final snap = await ref.get();
+    if (snap.exists && snap.data()?['side'] == side) {
+      await ref.delete();
+    } else {
+      await ref.set({'side': side, 'at': FieldValue.serverTimestamp()});
+    }
+  }
+
+  /// Live "who won" tally for a room, plus the current user's own vote.
+  Stream<VoteTally> watchVotes(String roomId, String? myUid) {
+    return _votesCol(roomId).snapshots().map((snap) {
+      var forCount = 0;
+      var againstCount = 0;
+      String? mine;
+      for (final d in snap.docs) {
+        final side = d.data()['side'];
+        if (side == 'for') forCount++;
+        if (side == 'against') againstCount++;
+        if (d.id == myUid) mine = side as String?;
+      }
+      return VoteTally(forCount: forCount, againstCount: againstCount, myVote: mine);
+    });
   }
 
   /// Deletes a message (used when you remove your own message via moderation).

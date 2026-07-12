@@ -9,11 +9,13 @@
 // (Requires the Firebase project to be on the Blaze plan.)
 
 const { onDocumentCreated } = require("firebase-functions/v2/firestore");
-const { onRequest } = require("firebase-functions/v2/https");
+const { onRequest, onCall, HttpsError } = require("firebase-functions/v2/https");
+const { onSchedule } = require("firebase-functions/v2/scheduler");
 const { defineSecret } = require("firebase-functions/params");
 const { initializeApp } = require("firebase-admin/app");
 const { getFirestore, FieldValue } = require("firebase-admin/firestore");
 const { getMessaging } = require("firebase-admin/messaging");
+const crypto = require("crypto");
 
 initializeApp();
 
@@ -246,3 +248,75 @@ exports.broadcastTopic = onRequest(
     return res.status(500).json({ error: e.message || String(e) });
   }
 });
+
+// ---- Verify a private room's password (server-side) ---------------------
+// The room password is checked here instead of on the phone, so a tampered
+// client can't bypass it and the hash is never exposed to clients. New private
+// rooms store a salted hash in the unreadable rooms/{id}/secure/auth subdoc;
+// older rooms fall back to the legacy (unsalted) passwordHash on the room doc.
+exports.verifyRoomPassword = onCall({ region: "asia-south1" }, async (req) => {
+  if (!req.auth) {
+    throw new HttpsError("unauthenticated", "Sign in first.");
+  }
+  const roomId = String((req.data && req.data.roomId) || "").trim();
+  const password = String((req.data && req.data.password) || "");
+  if (!roomId) {
+    throw new HttpsError("invalid-argument", "Missing roomId.");
+  }
+
+  const db = getFirestore();
+  const roomRef = db.collection("rooms").doc(roomId);
+  const roomSnap = await roomRef.get();
+  if (!roomSnap.exists) {
+    throw new HttpsError("not-found", "Room not found.");
+  }
+  const room = roomSnap.data() || {};
+  if (!room.isPrivate) return { ok: true }; // public room — no password needed
+
+  let storedHash = null;
+  let salt = "";
+  const secure = await roomRef.collection("secure").doc("auth").get();
+  if (secure.exists) {
+    storedHash = secure.data().hash;
+    salt = secure.data().salt || "";
+  } else if (room.passwordHash) {
+    storedHash = room.passwordHash; // legacy room — unsalted
+  }
+  if (!storedHash) return { ok: false };
+
+  const attempt = crypto
+    .createHash("sha256")
+    .update(salt + password.trim())
+    .digest("hex");
+  return { ok: attempt === storedHash };
+});
+
+// ---- Clean up stale, empty rooms ----------------------------------------
+// Runs daily. Deletes rooms whose last activity is older than the cutoff AND
+// that have no messages — so abandoned daily/broadcast rooms don't pile up.
+// Conservative: any room with even one message is kept.
+const STALE_ROOM_DAYS = 7;
+
+exports.cleanupStaleRooms = onSchedule(
+  { schedule: "every 24 hours", region: "asia-south1" },
+  async () => {
+    const db = getFirestore();
+    const cutoff = new Date(Date.now() - STALE_ROOM_DAYS * 24 * 60 * 60 * 1000);
+    const stale = await db
+      .collection("rooms")
+      .where("lastActivity", "<", cutoff)
+      .get();
+
+    let deleted = 0;
+    for (const doc of stale.docs) {
+      const msgs = await doc.ref.collection("messages").limit(1).get();
+      if (!msgs.empty) continue; // keep any room that has messages
+      // Remove the protected password subdoc too, if present.
+      const secure = await doc.ref.collection("secure").doc("auth").get();
+      if (secure.exists) await secure.ref.delete();
+      await doc.ref.delete();
+      deleted++;
+    }
+    console.log(`cleanupStaleRooms: deleted ${deleted} empty stale room(s)`);
+  }
+);

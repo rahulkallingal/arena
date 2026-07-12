@@ -67,6 +67,18 @@ reply, reactions, report/block/delete, per-room 🔔 notifications (Cloud Functi
   (`senderAvatar`), shown next to the name in chat. Fallback = name initial on a
   derived colour. Pieces: `data/avatars.dart`, `widgets/user_avatar.dart`,
   `widgets/avatar_picker.dart`.
+- **"Who won?" voting (v1.10.0):** live For/Against tally per room
+  (`widgets/vote_panel.dart`, `rooms/{id}/votes/{uid}` subcollection, one vote
+  per user). Shown under the topic banner in the chat screen.
+- **Profanity warning (v1.10.0):** `data/profanity.dart` flags vulgar words;
+  `chat_room_screen._confirmProfanity` warns before sending. Client-side only.
+- **Private-room password server-side (v1.10.0, deployed, app wiring pending):**
+  `verifyRoomPassword` callable reads a salted hash from the unreadable
+  `rooms/{id}/secure/auth` subdoc. Currently private rooms aren't password-gated
+  in the app (join-by-code enters directly; `checkPassword` was dead code) — the
+  join UI needs the `cloud_functions` package to call the function.
+- **Infra (v1.10.0):** Cloud Functions on **Node.js 22**; daily
+  `cleanupStaleRooms` deletes empty rooms idle 7+ days.
 
 **Dev admin login:** build with `--dart-define=ADMIN_EMAIL=cryptork97+admin@gmail.com
 --dart-define=ADMIN_PASSWORD=9633992347` to get a one-tap "Admin quick login"

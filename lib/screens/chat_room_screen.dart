@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 
+import '../data/profanity.dart';
 import '../models/message.dart';
 import '../models/room.dart';
 import '../services/auth_service.dart';
@@ -9,6 +10,7 @@ import '../services/room_service.dart';
 import '../theme.dart';
 import '../widgets/join_stance_dialog.dart';
 import '../widgets/message_bubble.dart';
+import '../widgets/vote_panel.dart';
 
 /// The live debate. Shows the topic at the top, the running conversation, and
 /// an input bar where you pick a stance (For / Against / Neutral) and send.
@@ -122,9 +124,41 @@ class _ChatRoomScreenState extends State<ChatRoomScreen> {
     super.dispose();
   }
 
+  /// Shown when a message contains flagged language. Returns true to send anyway.
+  Future<bool?> _confirmProfanity() {
+    return showDialog<bool>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        icon: const Icon(Icons.warning_amber_rounded, color: Colors.orange, size: 40),
+        title: const Text('Think before you send'),
+        content: const Text(
+          'Your message contains offensive language. Abusive, threatening or '
+          'hateful messages can get you banned and may lead to real trouble or '
+          'legal issues.\n\nAre you sure you want to send it?',
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(ctx, false),
+            child: const Text('Edit message'),
+          ),
+          TextButton(
+            style: TextButton.styleFrom(foregroundColor: Colors.red),
+            onPressed: () => Navigator.pop(ctx, true),
+            child: const Text('Send anyway'),
+          ),
+        ],
+      ),
+    );
+  }
+
   Future<void> _send() async {
     final text = _input.text.trim();
     if (text.isEmpty || _sending) return;
+    // Warn (but don't block) before sending vulgar/abusive language.
+    if (hasProfanity(text)) {
+      final proceed = await _confirmProfanity();
+      if (proceed != true || !mounted) return;
+    }
     setState(() => _sending = true);
     final user = _auth.currentUser!;
     try {
@@ -326,6 +360,10 @@ class _ChatRoomScreenState extends State<ChatRoomScreen> {
       body: Column(
         children: [
           _TopicBanner(topic: widget.room.topic),
+          VotePanel(
+            roomId: widget.room.id,
+            myUid: _auth.currentUser?.uid,
+          ),
           Expanded(
             child: StreamBuilder<List<Message>>(
               stream:

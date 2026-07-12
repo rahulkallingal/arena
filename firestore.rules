@@ -72,6 +72,23 @@ service cloud.firestore {
         allow delete: if signedIn()
                       && resource.data.senderId == request.auth.uid;
       }
+
+      // Server-only: a private room's salted password hash. Clients can NEVER
+      // read it (verification is done by the verifyRoomPassword Cloud Function);
+      // only the room's creator may write it.
+      match /secure/{doc} {
+        allow read: if false;
+        allow write: if signedIn()
+          && get(/databases/$(database)/documents/rooms/$(roomId))
+               .data.createdBy == request.auth.uid;
+      }
+
+      // "Who won?" votes — one document per user. Anyone signed in can read the
+      // tally; you may only cast or change your own vote.
+      match /votes/{voterId} {
+        allow read: if signedIn();
+        allow write: if signedIn() && request.auth.uid == voterId;
+      }
     }
   }
 }

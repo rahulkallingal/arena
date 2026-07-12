@@ -2,6 +2,33 @@
 
 All notable changes to Arena will be documented in this file.
 
+## [1.10.0] - July 13, 2026
+
+### ✨ Added
+- **"Who won?" voting** — every debate room now has a live *Who's winning?*
+  panel. Anyone watching can vote For or Against; a split bar shows the running
+  tally in real time. One vote per user (tap your side again to undo). Stored in
+  a `rooms/{id}/votes/{uid}` subcollection.
+- **Profanity warning before sending** — if a message contains vulgar/abusive
+  language, a confirmation dialog warns the sender it could get them banned or
+  into real/legal trouble, and asks them to confirm before it sends. Client-side
+  check (a warning, not censorship) in `data/profanity.dart`.
+
+### 🔒 Security & infrastructure
+- **Private-room passwords verified server-side** — new `verifyRoomPassword`
+  callable Cloud Function checks a salted hash held in an unreadable
+  `rooms/{id}/secure/auth` subdoc (rules block all client reads). The function
+  is deployed and ready; the app's join-flow wiring lands in a follow-up.
+- **Stale-room cleanup** — new daily `cleanupStaleRooms` scheduled function
+  deletes empty rooms with no activity for 7+ days (rooms with any message are
+  always kept), so abandoned daily/broadcast rooms don't pile up.
+- **Cloud Functions upgraded to Node.js 22** (Node 20 is decommissioned
+  2026-10-30).
+- Firestore rules: added the protected `secure/*` subdoc and the `votes/*`
+  subcollection (read the tally, write only your own vote). Existing anti-spoof
+  rules (post only as yourself, messages can only edit reactions) were already in
+  place.
+
 ## [1.9.0] - July 12, 2026
 
 ### ✨ Added
