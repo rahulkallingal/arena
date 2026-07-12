@@ -20,6 +20,10 @@ class NotificationService {
       FlutterLocalNotificationsPlugin();
   static bool _ready = false;
 
+  /// Called when the user taps a notification we showed while the app was in the
+  /// foreground. The payload is the roomId to open. Wired up from main.dart.
+  static void Function(String roomId)? onRoomTap;
+
   /// Sets up the plugin and asks for notification permission. Safe to call once
   /// at startup.
   static Future<void> init() async {
@@ -29,6 +33,12 @@ class NotificationService {
       const ios = DarwinInitializationSettings();
       await _plugin.initialize(
         settings: const InitializationSettings(android: android, iOS: ios),
+        onDidReceiveNotificationResponse: (response) {
+          final payload = response.payload;
+          if (payload != null && payload.isNotEmpty) {
+            onRoomTap?.call(payload);
+          }
+        },
       );
       final androidImpl = _plugin.resolvePlatformSpecificImplementation<
           AndroidFlutterLocalNotificationsPlugin>();
@@ -58,6 +68,15 @@ class NotificationService {
           'trending',
           'Trending debates',
           description: 'When a debate you joined is heating up',
+          importance: Importance.high,
+        ),
+      );
+      // Admin broadcast — a fresh topic pushed to everyone at once.
+      await androidImpl?.createNotificationChannel(
+        const AndroidNotificationChannel(
+          'broadcast',
+          'New debates',
+          description: 'A brand-new debate topic for everyone',
           importance: Importance.high,
         ),
       );
@@ -129,24 +148,37 @@ class NotificationService {
 
   /// Shows a notification for a pushed room message while the app is in the
   /// foreground. (When the app is in the background or closed, the system shows
-  /// the push automatically.) Best-effort — never throws.
-  static Future<void> showRoomMessage(String title, String body) =>
+  /// the push automatically.) [roomId] is the room to open if the user taps it.
+  /// Best-effort — never throws.
+  static Future<void> showRoomMessage(String title, String body,
+          {String? roomId}) =>
       _showForeground('room_messages', 'Room messages',
-          'New messages in rooms you follow', title, body);
+          'New messages in rooms you follow', title, body, payload: roomId);
 
   /// Foreground notification for a reply directed at you.
-  static Future<void> showReply(String title, String body) => _showForeground(
-      'replies', 'Replies to you', 'When someone replies to your message',
-      title, body);
+  static Future<void> showReply(String title, String body, {String? roomId}) =>
+      _showForeground('replies', 'Replies to you',
+          'When someone replies to your message', title, body, payload: roomId);
 
   /// Foreground notification for a debate you joined that is now trending.
-  static Future<void> showTrending(String title, String body) => _showForeground(
-      'trending', 'Trending debates', 'When a debate you joined is heating up',
-      title, body);
+  static Future<void> showTrending(String title, String body,
+          {String? roomId}) =>
+      _showForeground('trending', 'Trending debates',
+          'When a debate you joined is heating up', title, body,
+          payload: roomId);
 
-  /// Shared foreground-notification helper. Best-effort — never throws.
+  /// Foreground notification for an admin broadcast of a brand-new topic.
+  static Future<void> showBroadcast(String title, String body,
+          {String? roomId}) =>
+      _showForeground('broadcast', 'New debates',
+          'A brand-new debate topic for everyone', title, body,
+          payload: roomId);
+
+  /// Shared foreground-notification helper. [payload] (a roomId) makes the
+  /// notification open that room when tapped. Best-effort — never throws.
   static Future<void> _showForeground(String channelId, String channelName,
-      String channelDesc, String title, String body) async {
+      String channelDesc, String title, String body,
+      {String? payload}) async {
     if (!_ready) return;
     try {
       final details = NotificationDetails(
@@ -166,6 +198,7 @@ class NotificationService {
         title: title,
         body: body,
         notificationDetails: details,
+        payload: payload,
       );
     } catch (_) {
       // Optional feature — ignore any failure.

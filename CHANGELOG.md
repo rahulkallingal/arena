@@ -2,6 +2,32 @@
 
 All notable changes to Arena will be documented in this file.
 
+## [1.8.0] - July 12, 2026
+
+### ✨ Added
+- **Admin broadcast topic (Postman API)** — a new HTTP Cloud Function,
+  `broadcastTopic`, lets the admin push a brand-new debate to **every user at
+  once** by POSTing a single sentence from Postman (or any HTTP client). It
+  creates a fresh public room for that sentence and sends one notification to
+  the app-wide `all_users` topic. Guarded by a shared secret (`x-arena-key`
+  header) so only the admin can fire it. New **"New debates"** notification
+  channel (`broadcast`).
+- **Tap-to-open a room from a notification** — tapping any push now opens the
+  room it points at, in all app states: launched from cold start
+  (`getInitialMessage`), from the background (`onMessageOpenedApp`), and from a
+  foreground notification (payload-carried roomId). Previously taps did nothing.
+  This also improves the existing reply/trending/room-message pushes.
+- Every device now subscribes to the `all_users` topic at startup
+  (`RoomNotifyService.subscribeAll`) so broadcasts reach everyone.
+
+### ⚠️ Requires (one-time)
+- **Set the broadcast secret** (`firebase functions:secrets:set BROADCAST_SECRET`
+  — kept in Secret Manager, never in this public repo), **redeploy the Cloud
+  Function** (`firebase deploy --only functions`) to publish the new
+  `broadcastTopic` endpoint, and rebuild the app so phones subscribe to
+  `all_users` and handle notification taps. See `NOTIFICATIONS_SETUP.md` →
+  "Admin broadcast topic (Postman)".
+
 ## [1.7.0] - July 5, 2026
 
 ### ✨ Added

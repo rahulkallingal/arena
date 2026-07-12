@@ -18,6 +18,21 @@ class RoomNotifyService {
 
   static String _prefKey(String roomId) => 'notify_$roomId';
 
+  /// One topic every device subscribes to, so an admin can push a single
+  /// broadcast that reaches every user at once (see the broadcastTopic Cloud
+  /// Function). MUST match ALL_USERS_TOPIC in the Cloud Function.
+  static const String allUsersTopic = 'all_users';
+
+  /// Subscribes this device to the app-wide broadcast topic. Called at startup.
+  /// Best-effort — never throws.
+  static Future<void> subscribeAll() async {
+    try {
+      await FirebaseMessaging.instance.subscribeToTopic(allUsersTopic);
+    } catch (_) {
+      // Offline / messaging unavailable — the app must still work.
+    }
+  }
+
   /// FCM topic names only allow [a-zA-Z0-9-_.~%]. Room ids are normally safe,
   /// but sanitise defensively. MUST match the sanitising in the Cloud Function.
   static String topicFor(String roomId) =>

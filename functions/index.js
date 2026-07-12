@@ -9,8 +9,10 @@
 // (Requires the Firebase project to be on the Blaze plan.)
 
 const { onDocumentCreated } = require("firebase-functions/v2/firestore");
+const { onRequest } = require("firebase-functions/v2/https");
+const { defineSecret } = require("firebase-functions/params");
 const { initializeApp } = require("firebase-admin/app");
-const { getFirestore } = require("firebase-admin/firestore");
+const { getFirestore, FieldValue } = require("firebase-admin/firestore");
 const { getMessaging } = require("firebase-admin/messaging");
 
 initializeApp();
@@ -29,6 +31,17 @@ function userTopicFor(uid) {
 function participantsTopicFor(roomId) {
   return "room_participants_" + roomId.replace(/[^a-zA-Z0-9-_.~%]/g, "_");
 }
+
+// Everyone who runs the app subscribes to this one topic (see
+// RoomNotifyService.allUsersTopic). An admin broadcast is pushed here so it
+// reaches every user at once. MUST match the Flutter app.
+const ALL_USERS_TOPIC = "all_users";
+
+// Shared secret that guards the broadcast endpoint so only you can trigger it.
+// Stored in Google Secret Manager (NOT in this public repo). Set it once with:
+//   firebase functions:secrets:set BROADCAST_SECRET
+// and send the same value as the "x-arena-key" header from Postman.
+const broadcastSecret = defineSecret("BROADCAST_SECRET");
 
 // "Trending" tuning: a burst of THRESHOLD messages within WINDOW_MS marks a room
 // as on fire; at most one trending push per room every COOLDOWN_MS.
@@ -154,3 +167,82 @@ exports.notifyRoomOnNewMessage = onDocumentCreated(
     }
   }
 );
+
+// ---- Admin broadcast (call from Postman) --------------------------------
+// POST a sentence (the debate topic). This creates a fresh public room for it
+// and pushes ONE notification to every user (the "all_users" topic). Tapping
+// the notification opens that new room in the app.
+//
+// Usage from Postman:
+//   POST https://<region>-<project>.cloudfunctions.net/broadcastTopic
+//   Header:  x-arena-key: <BROADCAST_SECRET above>
+//   Body (either works):
+//     • raw JSON:  { "topic": "Should AI replace teachers?" }
+//     • raw text:  Should AI replace teachers?
+//   Optional JSON field: "category": "Technology"
+exports.broadcastTopic = onRequest(
+  { region: "asia-south1", secrets: [broadcastSecret] },
+  async (req, res) => {
+  if (req.method !== "POST") {
+    return res.status(405).json({ error: "Use POST" });
+  }
+
+  // Only you, holding the shared secret, may fire a broadcast. If the secret was
+  // never set, reject everything (never fall open).
+  const expected = broadcastSecret.value();
+  const key = req.get("x-arena-key") || req.query.key;
+  if (!expected || key !== expected) {
+    return res.status(401).json({ error: "Unauthorized — wrong or missing key" });
+  }
+
+  // Accept the topic as raw text, or as JSON { topic: "..." }.
+  let topic = "";
+  let category = "Other";
+  if (typeof req.body === "string") {
+    topic = req.body;
+  } else if (req.body && typeof req.body === "object") {
+    topic = req.body.topic || "";
+    if (req.body.category) category = String(req.body.category);
+  }
+  topic = String(topic || "").trim();
+  if (!topic) {
+    return res.status(400).json({ error: "Provide a topic sentence" });
+  }
+
+  try {
+    const db = getFirestore();
+
+    // Create the room this broadcast points at. Shape matches Room.toCreateMap()
+    // in the Flutter app so it renders like any other room.
+    const roomRef = await db.collection("rooms").add({
+      name: topic.slice(0, 80),
+      topic: topic,
+      category: category,
+      isPrivate: false,
+      passwordHash: null,
+      createdBy: "admin",
+      createdByName: "Arena",
+      isDaily: false,
+      isBroadcast: true,
+      createdAt: FieldValue.serverTimestamp(),
+      lastActivity: FieldValue.serverTimestamp(),
+    });
+    const roomId = roomRef.id;
+
+    // One push to everyone. data.roomId + type let the app open the room on tap.
+    await getMessaging().send({
+      topic: ALL_USERS_TOPIC,
+      notification: { title: "🔥 New debate is live!", body: topic.slice(0, 180) },
+      data: { roomId: roomId, type: "broadcast" },
+      android: {
+        priority: "high",
+        notification: { channelId: "broadcast" },
+      },
+    });
+
+    return res.status(200).json({ ok: true, roomId, topic });
+  } catch (e) {
+    console.error("broadcastTopic failed:", e);
+    return res.status(500).json({ error: e.message || String(e) });
+  }
+});

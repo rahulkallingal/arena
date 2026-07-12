@@ -50,6 +50,16 @@ reply, reactions, report/block/delete, per-room 🔔 notifications (Cloud Functi
   phone's `scheduleDailyTopics` reads it and overrides that day's push
   (local-override approach). Needs the updated `firestore.rules` (config/*)
   PUBLISHED. Fallback = hardcoded daily topics.
+- **Admin broadcast topic / Postman API (v1.8.0, needs redeploy):** HTTP Cloud
+  Function `broadcastTopic` (onRequest, region `asia-south1`, guarded by the
+  `BROADCAST_SECRET` / `x-arena-key` header). POST a sentence → it creates a
+  fresh public room and pushes one notification to the app-wide `all_users`
+  topic (channel `broadcast`), reaching everyone at once. Every device subscribes
+  to `all_users` at startup (`RoomNotifyService.subscribeAll`).
+- **Tap-to-open room (v1.8.0):** tapping any push now opens its room —
+  `getInitialMessage` (cold start), `onMessageOpenedApp` (background), and a
+  roomId payload on foreground local notifications, routed via a global
+  `navigatorKey`. Applies to all push types.
 
 **Dev admin login:** build with `--dart-define=ADMIN_EMAIL=cryptork97+admin@gmail.com
 --dart-define=ADMIN_PASSWORD=9633992347` to get a one-tap "Admin quick login"

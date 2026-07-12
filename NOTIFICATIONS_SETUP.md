@@ -132,6 +132,46 @@ have a friend (or a second account on the web) post — you'll get the alert.
 
 ---
 
+## Admin broadcast topic (Postman) — v1.8.0
+
+Push a **brand-new debate to everyone at once** by sending one sentence from
+Postman (or any HTTP tool). It creates a fresh public room for that sentence and
+notifies every user; tapping the notification opens that room.
+
+**One-time (same as the other updates):**
+1. **Set the secret key** (stored in Google Secret Manager, kept out of this
+   public repo):
+   ```
+   firebase functions:secrets:set BROADCAST_SECRET
+   ```
+   Paste the key you want when prompted (this is the value you'll send from
+   Postman). To change it later, run the same command again and re-deploy.
+2. `firebase deploy --only functions` — publishes the new `broadcastTopic`
+   endpoint. When it finishes, note the URL it prints, e.g.
+   `https://asia-south1-arena-a049d.cloudfunctions.net/broadcastTopic`.
+3. Rebuild the app onto every phone (so each device joins the `all_users` topic
+   and can open a room when a notification is tapped). Only phones on this build
+   (or newer) receive broadcasts.
+4. If the first call returns **403 Forbidden**, the gen-2 function needs public
+   invocation:
+   `gcloud functions add-invoker-policy-binding broadcastTopic --region=asia-south1 --member=allUsers`
+
+**Send a broadcast from Postman:**
+- Method: `POST`
+- URL: the `broadcastTopic` URL from the deploy
+- Header: `x-arena-key: <the BROADCAST_SECRET you set in step 1>`
+- Body → raw → JSON: `{ "topic": "Should AI replace teachers?" }`
+  (a raw-text body containing just the sentence also works; optional
+  `"category"` field)
+- Response: `{ "ok": true, "roomId": "...", "topic": "..." }`
+
+**Security:** the endpoint is protected only by the `BROADCAST_SECRET` shared
+key (in Google Secret Manager, never in the repo). Keep it private, and rotate
+it (`firebase functions:secrets:set BROADCAST_SECRET`, then re-deploy) if it ever
+leaks — anyone with the URL + key can push to all users.
+
+---
+
 ## Updating — trending-debate + admin "push trending topic" (v1.7.0)
 
 Two more features are in the app but need the same one-time re-deploy:
