@@ -1,6 +1,8 @@
 import 'dart:convert';
+import 'dart:math';
 
 import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:cloud_functions/cloud_functions.dart';
 import 'package:crypto/crypto.dart';
 
 import '../models/message.dart';
@@ -63,16 +65,45 @@ class RoomService {
       topic: topic.trim(),
       category: category,
       isPrivate: isPrivate,
-      passwordHash:
-          isPrivate && password != null ? hashPassword(password) : null,
+      // The password hash is NOT stored on the room doc (clients can read that).
+      // For private rooms we write a salted hash to the unreadable secure subdoc
+      // below, and verification happens in the verifyRoomPassword function.
+      passwordHash: null,
       createdBy: createdBy,
       createdByName: createdByName,
     );
     final ref = await _rooms.add(room.toCreateMap());
+    if (isPrivate && password != null && password.trim().isNotEmpty) {
+      final salt = _randomSalt();
+      final hash =
+          sha256.convert(utf8.encode(salt + password.trim())).toString();
+      await ref.collection('secure').doc('auth').set({'hash': hash, 'salt': salt});
+    }
     return ref.id;
   }
 
-  /// Checks a typed [password] against a room's stored hash.
+  /// A random salt (hex) for a private room's password hash.
+  String _randomSalt() {
+    final rnd = Random.secure();
+    final bytes = List<int>.generate(16, (_) => rnd.nextInt(256));
+    return bytes.map((b) => b.toRadixString(16).padLeft(2, '0')).join();
+  }
+
+  /// Asks the server whether [password] is correct for a private [roomId].
+  /// The check runs in the verifyRoomPassword Cloud Function so a tampered app
+  /// can't bypass it and the hash never reaches the client.
+  Future<bool> verifyRoomPassword(String roomId, String password) async {
+    final callable = FirebaseFunctions.instanceFor(region: 'asia-south1')
+        .httpsCallable('verifyRoomPassword');
+    final res = await callable.call<dynamic>(
+      {'roomId': roomId, 'password': password},
+    );
+    final data = res.data;
+    return data is Map && data['ok'] == true;
+  }
+
+  /// Checks a typed [password] against a room's stored hash. (Legacy local
+  /// check — kept for older rooms; new code uses [verifyRoomPassword].)
   bool checkPassword(Room room, String password) {
     if (!room.isPrivate) return true;
     return room.passwordHash == hashPassword(password);

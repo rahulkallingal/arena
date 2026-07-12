@@ -27,6 +27,81 @@ class _JoinByCodeScreenState extends State<JoinByCodeScreen> {
     super.dispose();
   }
 
+  /// Prompts for a private room's password and verifies it on the server.
+  /// Returns true only when the password is correct. Lets the user retry.
+  Future<bool?> _promptAndVerifyPassword(Room room) async {
+    final controller = TextEditingController();
+    return showDialog<bool>(
+      context: context,
+      barrierDismissible: false,
+      builder: (ctx) {
+        String? error;
+        bool checking = false;
+        return StatefulBuilder(
+          builder: (ctx, setLocal) {
+            Future<void> submit() async {
+              final pwd = controller.text;
+              if (pwd.isEmpty) {
+                setLocal(() => error = 'Enter the password');
+                return;
+              }
+              setLocal(() {
+                checking = true;
+                error = null;
+              });
+              try {
+                final ok = await RoomService().verifyRoomPassword(room.id, pwd);
+                if (ok) {
+                  if (ctx.mounted) Navigator.pop(ctx, true);
+                } else {
+                  setLocal(() {
+                    checking = false;
+                    error = 'Wrong password';
+                  });
+                }
+              } catch (_) {
+                setLocal(() {
+                  checking = false;
+                  error = 'Could not verify — check your internet.';
+                });
+              }
+            }
+
+            return AlertDialog(
+              title: Text('"${room.name}" is private'),
+              content: TextField(
+                controller: controller,
+                obscureText: true,
+                autofocus: true,
+                onSubmitted: (_) => submit(),
+                decoration: InputDecoration(
+                  labelText: 'Password',
+                  errorText: error,
+                ),
+              ),
+              actions: [
+                TextButton(
+                  onPressed: checking ? null : () => Navigator.pop(ctx, false),
+                  child: const Text('Cancel'),
+                ),
+                TextButton(
+                  onPressed: checking ? null : submit,
+                  child: checking
+                      ? const SizedBox(
+                          height: 16,
+                          width: 16,
+                          child: CircularProgressIndicator(strokeWidth: 2),
+                        )
+                      : const Text('Enter'),
+                ),
+              ],
+            );
+          },
+        );
+      },
+    );
+  }
+
   Future<void> _joinRoom() async {
     final code = _codeController.text.trim();
 
@@ -68,9 +143,16 @@ class _JoinByCodeScreenState extends State<JoinByCodeScreen> {
 
       final room = Room.fromDoc(doc);
 
-      // Use the side picked last time; only ask the first time in this room.
       if (!mounted) return;
       setState(() => _searching = false);
+
+      // Private rooms require the correct password, verified on the server.
+      if (room.isPrivate) {
+        final ok = await _promptAndVerifyPassword(room);
+        if (ok != true || !mounted) return;
+      }
+
+      // Use the side picked last time; only ask the first time in this room.
       final uid = FirebaseAuth.instance.currentUser?.uid;
       Stance? stance;
       if (uid != null) {

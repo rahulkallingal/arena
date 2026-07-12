@@ -72,11 +72,13 @@ reply, reactions, report/block/delete, per-room 🔔 notifications (Cloud Functi
   per user). Shown under the topic banner in the chat screen.
 - **Profanity warning (v1.10.0):** `data/profanity.dart` flags vulgar words;
   `chat_room_screen._confirmProfanity` warns before sending. Client-side only.
-- **Private-room password server-side (v1.10.0, deployed, app wiring pending):**
-  `verifyRoomPassword` callable reads a salted hash from the unreadable
-  `rooms/{id}/secure/auth` subdoc. Currently private rooms aren't password-gated
-  in the app (join-by-code enters directly; `checkPassword` was dead code) — the
-  join UI needs the `cloud_functions` package to call the function.
+- **Private-room password server-side (v1.10.1, WIRED):** joining a private room
+  by code prompts for the password and verifies via the `verifyRoomPassword`
+  callable (salted hash in the unreadable `rooms/{id}/secure/auth` subdoc; new
+  rooms store no hash on the readable room doc). Uses the `cloud_functions`
+  package. `RoomService.createRoom` writes the secure subdoc;
+  `join_by_code_screen._promptAndVerifyPassword` gates entry. Already-joined
+  members/creators aren't re-prompted.
 - **Infra (v1.10.0):** Cloud Functions on **Node.js 22**; daily
   `cleanupStaleRooms` deletes empty rooms idle 7+ days.
 

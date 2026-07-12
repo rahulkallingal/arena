@@ -2,6 +2,16 @@
 
 All notable changes to Arena will be documented in this file.
 
+## [1.10.1] - July 13, 2026
+
+### 🔒 Security
+- **Private rooms are now actually password-gated.** Joining a private room by
+  code prompts for the password and verifies it via the `verifyRoomPassword`
+  Cloud Function (salted hash in the unreadable `rooms/{id}/secure/auth` subdoc).
+  New private rooms no longer store any hash on the readable room doc. Added the
+  `cloud_functions` package. (Members/creators who open a room they've already
+  joined aren't re-prompted; outsiders joining by code are.)
+
 ## [1.10.0] - July 13, 2026
 
 ### ✨ Added
