@@ -320,3 +320,43 @@ exports.cleanupStaleRooms = onSchedule(
     console.log(`cleanupStaleRooms: deleted ${deleted} empty stale room(s)`);
   }
 );
+
+// ---- SAFETY: clear every room (call from Postman) -----------------------
+// Recursively deletes ALL rooms and their messages/votes/subdocs — the same
+// wipe as a manual cleanup, but on demand. User accounts and config are NOT
+// touched. Guarded by BOTH the shared secret AND an explicit confirmation
+// string, so it can never fire by accident.
+//
+// Usage from Postman:
+//   POST https://asia-south1-arena-a049d.cloudfunctions.net/clearAllRooms
+//   Header:  x-arena-key: <BROADCAST_SECRET>
+//   Body (raw JSON):  { "confirm": "DELETE ALL ROOMS" }
+exports.clearAllRooms = onRequest(
+  { region: "asia-south1", secrets: [broadcastSecret] },
+  async (req, res) => {
+    if (req.method !== "POST") {
+      return res.status(405).json({ error: "Use POST" });
+    }
+    const expected = broadcastSecret.value();
+    const key = req.get("x-arena-key") || req.query.key;
+    if (!expected || key !== expected) {
+      return res.status(401).json({ error: "Unauthorized — wrong or missing key" });
+    }
+    const confirm =
+      (req.body && typeof req.body === "object" && req.body.confirm) ||
+      req.query.confirm;
+    if (confirm !== "DELETE ALL ROOMS") {
+      return res.status(400).json({
+        error: 'Send {"confirm":"DELETE ALL ROOMS"} to proceed.',
+      });
+    }
+    try {
+      const db = getFirestore();
+      await db.recursiveDelete(db.collection("rooms"));
+      return res.status(200).json({ ok: true, cleared: "rooms" });
+    } catch (e) {
+      console.error("clearAllRooms failed:", e);
+      return res.status(500).json({ error: e.message || String(e) });
+    }
+  }
+);

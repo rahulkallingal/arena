@@ -2,6 +2,15 @@
 
 All notable changes to Arena will be documented in this file.
 
+## [1.10.2] - July 13, 2026
+
+### 🧹 Added (admin)
+- **"Clear all rooms" API** — new `clearAllRooms` HTTP Cloud Function (Postman)
+  recursively deletes every room and all their messages/votes on demand (user
+  accounts and config are untouched). Guarded by the `x-arena-key` secret AND an
+  explicit `{"confirm":"DELETE ALL ROOMS"}` body so it can't fire by accident.
+  Server-only — no app change. See `NOTIFICATIONS_SETUP.md`.
+
 ## [1.10.1] - July 13, 2026
 
 ### 🔒 Security

@@ -172,6 +172,23 @@ leaks — anyone with the URL + key can push to all users.
 
 ---
 
+## Clear all rooms (Postman) — safety wipe
+
+`clearAllRooms` recursively deletes **every room and all their messages/votes**
+on demand — the same as a manual cleanup. User accounts and config are **not**
+touched. Uses the **same** `BROADCAST_SECRET` key (no extra setup), plus an
+explicit confirmation string so it can't fire by accident.
+
+```
+POST https://asia-south1-arena-a049d.cloudfunctions.net/clearAllRooms
+Header:  x-arena-key: <BROADCAST_SECRET>
+Body (raw JSON):  { "confirm": "DELETE ALL ROOMS" }
+```
+Response: `{ "ok": true, "cleared": "rooms" }`. Anything other than the exact
+`confirm` string is rejected. **This is irreversible.**
+
+---
+
 ## Updating — trending-debate + admin "push trending topic" (v1.7.0)
 
 Two more features are in the app but need the same one-time re-deploy:
