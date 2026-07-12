@@ -12,6 +12,11 @@ class Message {
   final String text;
   final String senderId;
   final String senderName;
+
+  /// The sender's avatar emoji at send time (denormalized like [senderName] so
+  /// the chat renders their picture without an extra profile read). May be null.
+  final String? senderAvatar;
+
   final Stance stance;
   final DateTime? createdAt;
 
@@ -33,6 +38,7 @@ class Message {
     required this.text,
     required this.senderId,
     required this.senderName,
+    this.senderAvatar,
     this.stance = Stance.neutral,
     this.createdAt,
     this.reactions = const {},
@@ -52,6 +58,7 @@ class Message {
       text: d['text'] ?? '',
       senderId: d['senderId'] ?? '',
       senderName: d['senderName'] ?? 'Anonymous',
+      senderAvatar: d['senderAvatar'],
       stance: _stanceFromString(d['stance']),
       createdAt: (d['createdAt'] as Timestamp?)?.toDate(),
       reactions: rawReactions.map((k, v) => MapEntry(k, v.toString())),
@@ -78,6 +85,7 @@ class Message {
         'text': text,
         'senderId': senderId,
         'senderName': senderName,
+        if (senderAvatar != null) 'senderAvatar': senderAvatar,
         'stance': stance.name,
         'createdAt': FieldValue.serverTimestamp(),
         'reactions': <String, String>{},

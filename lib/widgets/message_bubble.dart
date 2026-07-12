@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 
 import '../models/message.dart';
 import '../theme.dart';
+import 'user_avatar.dart';
 
 /// One chat bubble. My own messages sit on the right; others on the left.
 /// A small coloured tag shows whether the message argues For or Against the
@@ -88,10 +89,8 @@ class MessageBubble extends StatelessWidget {
     final counts = message.reactionCounts;
     final mine = message.myReaction(myUid);
 
-    return Padding(
-      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
-      child: Column(
-        crossAxisAlignment: align,
+    final content = Column(
+      crossAxisAlignment: align,
         children: [
           if (!isMine)
             Padding(
@@ -185,7 +184,24 @@ class MessageBubble extends StatelessWidget {
               ),
             ),
         ],
-      ),
+      );
+
+    return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
+      child: isMine
+          ? content
+          : Row(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                UserAvatar(
+                  emoji: message.senderAvatar,
+                  name: message.senderName,
+                  size: 32,
+                ),
+                const SizedBox(width: 6),
+                Expanded(child: content),
+              ],
+            ),
     );
   }
 

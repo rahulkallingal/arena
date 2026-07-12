@@ -88,6 +88,7 @@ class RoomService {
     required String text,
     required String senderId,
     required String senderName,
+    String? senderAvatar,
     required Stance stance,
     Message? replyTo,
   }) async {
@@ -96,6 +97,7 @@ class RoomService {
       text: text.trim(),
       senderId: senderId,
       senderName: senderName,
+      senderAvatar: senderAvatar,
       stance: stance,
       replyToId: replyTo?.id,
       replyToText: replyTo?.text,

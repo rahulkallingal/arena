@@ -14,9 +14,11 @@ import '../services/room_service.dart';
 import '../theme.dart';
 import '../widgets/join_stance_dialog.dart';
 import '../widgets/room_card.dart';
+import '../widgets/user_avatar.dart';
 import 'chat_room_screen.dart';
 import 'create_room_screen.dart';
 import 'login_screen.dart';
+import 'profile_screen.dart';
 import 'room_discovery_screen.dart';
 
 /// The home screen: today's featured topic, a search box, category filters, and
@@ -321,15 +323,26 @@ class _RoomsListScreenState extends State<RoomsListScreen>
           ),
           PopupMenuButton<String>(
             tooltip: 'Account',
-            icon: const Icon(Icons.account_circle_outlined),
+            icon: UserAvatar(
+              emoji: _auth.myAvatar,
+              name: _auth.displayName,
+              size: 32,
+            ),
             onSelected: (value) {
-              if (value == 'password') {
+              if (value == 'profile') {
+                Navigator.of(context)
+                    .push(MaterialPageRoute(
+                        builder: (_) => const ProfileScreen()))
+                    .then((_) => setState(() {})); // refresh the avatar icon
+              } else if (value == 'password') {
                 _showChangePassword();
               } else if (value == 'logout') {
                 _logout();
               }
             },
             itemBuilder: (ctx) => [
+              const PopupMenuItem(
+                  value: 'profile', child: Text('Profile & avatar')),
               // Only email/password accounts have a password to change.
               if (_auth.hasPasswordProvider)
                 const PopupMenuItem(

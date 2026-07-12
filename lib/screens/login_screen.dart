@@ -1,7 +1,11 @@
+import 'dart:math';
+
 import 'package:flutter/material.dart';
 
+import '../data/avatars.dart';
 import '../services/auth_service.dart';
 import '../theme.dart';
+import '../widgets/avatar_picker.dart';
 import 'legal_screen.dart';
 import 'rooms_list_screen.dart';
 
@@ -23,6 +27,9 @@ class _LoginScreenState extends State<LoginScreen> {
   final _auth = AuthService();
 
   late bool _isSignUp = widget.startInSignUp;
+  // The avatar shown/selected on the sign-up form. Starts on a random one so a
+  // user who doesn't change it still gets a picture.
+  String _avatar = kAvatarEmojis[Random().nextInt(kAvatarEmojis.length)];
   bool _submitting = false; // email create/login in progress
   bool _googling = false; // Google sign-in in progress
   bool get _busy => _submitting || _googling; // either action running
@@ -161,7 +168,8 @@ class _LoginScreenState extends State<LoginScreen> {
     setState(() => _submitting = true);
     try {
       if (_isSignUp) {
-        await _auth.signUp(email: email, password: password, name: name);
+        await _auth.signUp(
+            email: email, password: password, name: name, avatar: _avatar);
       } else {
         await _auth.logIn(email: email, password: password);
       }
@@ -245,7 +253,21 @@ class _LoginScreenState extends State<LoginScreen> {
                       errorText: _nameError,
                     ),
                   ),
-                  const SizedBox(height: 12),
+                  const SizedBox(height: 16),
+                  const Text(
+                    'Pick your avatar',
+                    style: TextStyle(
+                      fontSize: 13,
+                      fontWeight: FontWeight.w600,
+                      color: AppColors.textGrey,
+                    ),
+                  ),
+                  const SizedBox(height: 10),
+                  AvatarPicker(
+                    selected: _avatar,
+                    onSelected: (e) => setState(() => _avatar = e),
+                  ),
+                  const SizedBox(height: 16),
                 ],
                 TextField(
                   controller: _email,

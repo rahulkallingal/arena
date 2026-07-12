@@ -133,6 +133,7 @@ class _ChatRoomScreenState extends State<ChatRoomScreen> {
         text: text,
         senderId: user.uid,
         senderName: _auth.displayName,
+        senderAvatar: _auth.myAvatar,
         stance: _stance,
         replyTo: _replyingTo,
       );

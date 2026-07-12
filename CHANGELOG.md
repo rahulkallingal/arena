@@ -2,6 +2,21 @@
 
 All notable changes to Arena will be documented in this file.
 
+## [1.9.0] - July 12, 2026
+
+### ✨ Added
+- **Emoji avatars (profile pictures)** — users now pick an avatar from a set of
+  24 emoji (drawn on coloured circles, no image files / storage cost). Choose one
+  at **sign-up**, and change it anytime from **Profile & avatar** in the account
+  menu. Avatars appear next to the sender's name on every message.
+  - Stored on the profile (Firebase Auth `photoURL` + `users/{uid}.avatar`) and
+    **denormalized** onto each message (`senderAvatar`) so the chat renders with
+    no extra reads — same pattern as `senderName`.
+  - If a user hasn't picked one, their avatar falls back to the first letter of
+    their name on a colour derived from it.
+  - New reusable pieces: `data/avatars.dart`, `widgets/user_avatar.dart`,
+    `widgets/avatar_picker.dart`, `screens/profile_screen.dart`.
+
 ## [1.8.0] - July 12, 2026
 
 ### ✨ Added

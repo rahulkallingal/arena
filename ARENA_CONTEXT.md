@@ -60,6 +60,13 @@ reply, reactions, report/block/delete, per-room 🔔 notifications (Cloud Functi
   `getInitialMessage` (cold start), `onMessageOpenedApp` (background), and a
   roomId payload on foreground local notifications, routed via a global
   `navigatorKey`. Applies to all push types.
+- **Emoji avatars (v1.9.0):** users pick an avatar from 24 emoji (on coloured
+  circles — no image assets). Chosen at sign-up and editable via **Profile &
+  avatar** (account menu → `screens/profile_screen.dart`). Stored on the profile
+  (Auth `photoURL` + `users/{uid}.avatar`) and denormalized onto each message
+  (`senderAvatar`), shown next to the name in chat. Fallback = name initial on a
+  derived colour. Pieces: `data/avatars.dart`, `widgets/user_avatar.dart`,
+  `widgets/avatar_picker.dart`.
 
 **Dev admin login:** build with `--dart-define=ADMIN_EMAIL=cryptork97+admin@gmail.com
 --dart-define=ADMIN_PASSWORD=9633992347` to get a one-tap "Admin quick login"

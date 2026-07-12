@@ -33,6 +33,11 @@ class AuthService {
 
   String get displayName => _auth.currentUser?.displayName ?? 'Anonymous';
 
+  /// The signed-in user's chosen avatar emoji (stored in the Firebase Auth
+  /// photoURL so it's available synchronously, like [displayName]). Null if they
+  /// haven't picked one (or it's an old Google photo URL).
+  String? get myAvatar => _auth.currentUser?.photoURL;
+
   bool get isEmailVerified => _auth.currentUser?.emailVerified ?? false;
 
   String? get email => _auth.currentUser?.email;
@@ -54,6 +59,7 @@ class AuthService {
     required String email,
     required String password,
     required String name,
+    String? avatar,
   }) async {
     final cred = await _auth.createUserWithEmailAndPassword(
       email: email.trim(),
@@ -61,9 +67,13 @@ class AuthService {
     );
     final user = cred.user!;
     await user.updateDisplayName(name.trim());
+    if (avatar != null && avatar.isNotEmpty) {
+      await user.updatePhotoURL(avatar);
+    }
     await _db.collection('users').doc(user.uid).set({
       'displayName': name.trim(),
       'email': email.trim(),
+      if (avatar != null && avatar.isNotEmpty) 'avatar': avatar,
       'createdAt': FieldValue.serverTimestamp(),
     }, SetOptions(merge: true));
     // Send the verification email (non-blocking for the user's first session).
@@ -71,6 +81,19 @@ class AuthService {
       await user.sendEmailVerification();
     } catch (_) {/* ignore — they can resend from the banner */}
     // Make sure currentUser.displayName is populated for the first screen.
+    await user.reload();
+  }
+
+  /// Changes the signed-in user's avatar emoji. Updates both the Firebase Auth
+  /// photoURL (so it's available synchronously) and the Firestore profile.
+  Future<void> updateAvatar(String avatar) async {
+    final user = _auth.currentUser;
+    if (user == null) return;
+    await user.updatePhotoURL(avatar);
+    await _db.collection('users').doc(user.uid).set(
+      {'avatar': avatar},
+      SetOptions(merge: true),
+    );
     await user.reload();
   }
 
