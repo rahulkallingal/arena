@@ -410,3 +410,41 @@ exports.setDailyTopic = onRequest(
     }
   }
 );
+
+// ---- Admin: delete one room by id (call from Admin app) ------------------
+// Recursively deletes a single room and all its messages/votes/subdocs.
+// Guarded by the shared secret.
+//
+//   POST https://asia-south1-arena-a049d.cloudfunctions.net/deleteRoom
+//   Header:  x-arena-key: <BROADCAST_SECRET>
+//   Body: { "roomId": "<room id>" }
+exports.deleteRoom = onRequest(
+  { region: "asia-south1", secrets: [broadcastSecret] },
+  async (req, res) => {
+    if (req.method !== "POST") {
+      return res.status(405).json({ error: "Use POST" });
+    }
+    const expected = broadcastSecret.value();
+    const key = req.get("x-arena-key") || req.query.key;
+    if (!expected || key !== expected) {
+      return res.status(401).json({ error: "Unauthorized — wrong or missing key" });
+    }
+    const b = (req.body && typeof req.body === "object") ? req.body : {};
+    const roomId = String(b.roomId || "").trim();
+    if (!roomId) return res.status(400).json({ error: "Provide a roomId" });
+    try {
+      const db = getFirestore();
+      const ref = db.collection("rooms").doc(roomId);
+      const snap = await ref.get();
+      if (!snap.exists) {
+        return res.status(404).json({ error: "Room not found" });
+      }
+      const name = (snap.data() || {}).name || "";
+      await db.recursiveDelete(ref);
+      return res.status(200).json({ ok: true, deleted: roomId, name });
+    } catch (e) {
+      console.error("deleteRoom failed:", e);
+      return res.status(500).json({ error: e.message || String(e) });
+    }
+  }
+);
