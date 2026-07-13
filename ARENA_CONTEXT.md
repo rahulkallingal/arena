@@ -12,7 +12,7 @@
 - **How to work with Rahul:** plain language, no jargon, small numbered steps,
   explain each command before he runs it.
 
-## CURRENT STATUS (updated 2026-07-03)
+## CURRENT STATUS (updated 2026-07-13)
 
 > This section is the up-to-date snapshot. The sections further down are older
 > background; when they disagree, trust this + `CHANGELOG.md` + `git log`.
@@ -82,6 +82,62 @@ reply, reactions, report/block/delete, per-room 🔔 notifications (Cloud Functi
   members/creators aren't re-prompted.
 - **Infra (v1.10.0):** Cloud Functions on **Node.js 22**; daily
   `cleanupStaleRooms` deletes empty rooms idle 7+ days.
+- **Login-first screen (v1.10.4):** auth screen opens on **Log in** by default
+  (`startInSignUp=false`), with a "New here? Create an account" toggle.
+- **Bug fixes (v1.10.5):** (a) notification tap no longer re-opens a room in
+  watcher/neutral mode — `main.dart _openRoom` skips the room you're already in
+  and restores your saved stance; (b) opening a message's long-press menu drops
+  input focus so the keyboard doesn't pop back up on dismiss.
+- **Moderation reports view (v1.10.5):** users can already report a message
+  (long-press → Report → `reports` collection via `ModerationService`). New
+  `reportedMessages` Cloud Function aggregates by message and returns those with
+  **2+ distinct reporters**; viewed in the **Admin app** (Moderation card).
+  Reports are private to the admin — purely informational, no external/legal
+  action.
+
+## Cloud Functions & admin endpoints (project arena-a049d, region asia-south1)
+
+Deploy from the Arena repo: `firebase deploy --only functions --project arena-a049d`
+(needs `firebase login` + `cd functions && npm install` once on a new machine).
+The admin secret `BROADCAST_SECRET` lives in Google Secret Manager
+(`firebase functions:secrets:set BROADCAST_SECRET`) — NOT in this public repo.
+The value is baked into the **private Admin app** (`~/admin`, `lib/config.dart`).
+
+| Function | Type | Purpose |
+|---|---|---|
+| `notifyRoomOnNewMessage` | Firestore trigger | room/reply/trending pushes |
+| `broadcastTopic` | HTTP (secret) | push a topic to everyone + make a room |
+| `setDailyTopic` | HTTP (secret) | set `config/dailyOverride` topic-of-the-day |
+| `deleteRoom` | HTTP (secret) | delete one room by id (+ messages) |
+| `clearAllRooms` | HTTP (secret) | wipe ALL rooms (`confirm:"DELETE ALL ROOMS"`) |
+| `reportedMessages` | HTTP (secret) | messages with 2+ distinct reporters |
+| `verifyRoomPassword` | Callable (auth) | server-side private-room password check |
+| `cleanupStaleRooms` | Scheduled (daily) | delete empty rooms idle 7+ days |
+
+Base URL: `https://asia-south1-arena-a049d.cloudfunctions.net/<name>`. HTTP admin
+functions take header `x-arena-key: <BROADCAST_SECRET>`. See `NOTIFICATIONS_SETUP.md`.
+
+## Admin app (separate PRIVATE repo)
+
+`~/admin` — Flutter control panel, GitHub `git@github.com:rahulkallingal/admin.git`
+(**private**), no login (personal use). Lists apps; the **Arena** module turns the
+admin endpoints into on-phone buttons: Send broadcast, Topic of the day,
+Moderation (reported messages), Delete a room, Clear all rooms. The `x-arena-key`
+secret is pre-filled in `lib/config.dart` (editable in Settings). **Keep this repo
+and its APK PRIVATE** — never on the public Drive folder / GitHub releases.
+
+## Release / Google Play — PENDING (not done yet)
+- **Package name chosen: `com.cryptork.arena`** (`com.arena.arena` was taken on
+  Play). Requires: change `applicationId` in `android/app/build.gradle.kts` +
+  register a NEW Android app for it in Firebase (`firebase apps:create android`) +
+  swap in the new `google-services.json` + add the **release key SHA-1** (and
+  Play App Signing SHA-1) so **Google Sign-In** works on the store build.
+- **Signing:** app is currently **debug-signed** (`signingConfigs.getByName("debug")`)
+  — Play needs a real **release keystore** and an **`.aab`** (`flutter build appbundle`).
+- **Store listing:** 512×512 icon, 1024×500 feature graphic, screenshots,
+  short+full description, **privacy policy URL**, content rating + data-safety forms.
+- Pricing: choose **Free** (free→paid is not reversible on Play; monetize later via
+  IAP/subscriptions/ads).
 
 **Dev admin login:** build with `--dart-define=ADMIN_EMAIL=cryptork97+admin@gmail.com
 --dart-define=ADMIN_PASSWORD=9633992347` to get a one-tap "Admin quick login"
