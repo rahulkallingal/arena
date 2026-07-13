@@ -45,11 +45,12 @@ reply, reactions, report/block/delete, per-room 🔔 notifications (Cloud Functi
   messages in 30 min, participants (topic `room_participants_<roomId>`, joined on
   room open) get a catchy "on fire, jump back in" push (channel `trending`,
   3-hour per-room cooldown). Detection + send are in `notifyRoomOnNewMessage`.
-- **Admin "push trending topic" (v1.7.0):** admin (`cryptork97@gmail.com`) box on
-  the rooms list writes `config/dailyOverride` {topic, date, hour, minute}; each
-  phone's `scheduleDailyTopics` reads it and overrides that day's push
-  (local-override approach). Needs the updated `firestore.rules` (config/*)
-  PUBLISHED. Fallback = hardcoded daily topics.
+- **Admin "topic of the day" override (moved to Admin app, v1.10.3):** the
+  in-app admin card was **removed** from the rooms list. The override is now set
+  from the separate **Admin app**, which calls the secret-guarded `setDailyTopic`
+  Cloud Function (writes `config/dailyOverride` {topic, category, date, hour,
+  minute, setAt}). Each phone's `scheduleDailyTopics` still READS it and overrides
+  that day's push (local-override approach); fallback = hardcoded daily topics.
 - **Admin broadcast topic / Postman API (v1.8.0, needs redeploy):** HTTP Cloud
   Function `broadcastTopic` (onRequest, region `asia-south1`, guarded by the
   `BROADCAST_SECRET` / `x-arena-key` header). POST a sentence → it creates a

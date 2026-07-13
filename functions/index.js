@@ -360,3 +360,53 @@ exports.clearAllRooms = onRequest(
     }
   }
 );
+
+// ---- Admin: set the "topic of the day" override (call from Admin app) ----
+// Writes config/dailyOverride so every phone uses this topic for that day's
+// push instead of the hardcoded pool. Same shape the app's DailyOverrideService
+// reads. Guarded by the shared secret.
+//
+//   POST https://asia-south1-arena-a049d.cloudfunctions.net/setDailyTopic
+//   Header:  x-arena-key: <BROADCAST_SECRET>
+//   Body: { "topic": "...", "date": "yyyy-mm-dd", "hour": 9, "minute": 0,
+//           "category": "Trending" }
+exports.setDailyTopic = onRequest(
+  { region: "asia-south1", secrets: [broadcastSecret] },
+  async (req, res) => {
+    if (req.method !== "POST") {
+      return res.status(405).json({ error: "Use POST" });
+    }
+    const expected = broadcastSecret.value();
+    const key = req.get("x-arena-key") || req.query.key;
+    if (!expected || key !== expected) {
+      return res.status(401).json({ error: "Unauthorized — wrong or missing key" });
+    }
+    const b = (req.body && typeof req.body === "object") ? req.body : {};
+    const topic = String(b.topic || "").trim();
+    const date = String(b.date || "").trim();
+    const category = String(b.category || "Trending").trim() || "Trending";
+    const hour = Number.isInteger(b.hour) ? b.hour : 9;
+    const minute = Number.isInteger(b.minute) ? b.minute : 0;
+    if (!topic) return res.status(400).json({ error: "Provide a topic" });
+    if (!/^\d{4}-\d{2}-\d{2}$/.test(date)) {
+      return res.status(400).json({ error: "Provide date as yyyy-mm-dd" });
+    }
+    if (hour < 0 || hour > 23 || minute < 0 || minute > 59) {
+      return res.status(400).json({ error: "Invalid hour/minute" });
+    }
+    try {
+      await getFirestore().collection("config").doc("dailyOverride").set({
+        topic: topic,
+        category: category,
+        date: date,
+        hour: hour,
+        minute: minute,
+        setAt: FieldValue.serverTimestamp(),
+      });
+      return res.status(200).json({ ok: true, topic, date, hour, minute });
+    } catch (e) {
+      console.error("setDailyTopic failed:", e);
+      return res.status(500).json({ error: e.message || String(e) });
+    }
+  }
+);

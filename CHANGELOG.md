@@ -2,6 +2,16 @@
 
 All notable changes to Arena will be documented in this file.
 
+## [1.10.3] - July 13, 2026
+
+### 🔧 Changed
+- **Moved the admin "push trending topic" box out of the app.** The admin-only
+  card on the home screen (set the topic-of-the-day override) is **removed** —
+  regular users never saw it anyway, and it now lives in the separate **Admin
+  app**. Added a secret-guarded `setDailyTopic` Cloud Function that writes
+  `config/dailyOverride`; the Admin app calls it. The app still *reads* the
+  override for its daily push (unchanged for users).
+
 ## [1.10.2] - July 13, 2026
 
 ### 🧹 Added (admin)

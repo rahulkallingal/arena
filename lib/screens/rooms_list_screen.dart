@@ -9,7 +9,6 @@ import '../models/room.dart';
 import '../services/auth_service.dart';
 import '../services/daily_override_service.dart';
 import '../services/daily_topic_service.dart';
-import '../services/notification_service.dart';
 import '../services/room_service.dart';
 import '../theme.dart';
 import '../widgets/join_stance_dialog.dart';
@@ -48,10 +47,6 @@ class _RoomsListScreenState extends State<RoomsListScreen>
 
   DailyTopic? _todayOverride; // admin override for today's topic, if any
 
-  /// Only this admin account sees the "push trending topic" box.
-  static const _adminEmail = 'cryptork97@gmail.com';
-  bool get _isAdmin => _auth.email == _adminEmail;
-
   @override
   void initState() {
     super.initState();
@@ -72,39 +67,6 @@ class _RoomsListScreenState extends State<RoomsListScreen>
     final o = await DailyOverrideService.get();
     if (o != null && o.appliesTo(DateTime.now()) && mounted) {
       setState(() => _todayOverride = DailyTopic(o.topic, o.category));
-    }
-  }
-
-  /// Admin: queue [topic] to override the next daily push, at the chosen time.
-  Future<void> _pushTrendingTopic(
-      String topic, bool useDefaultTime, TimeOfDay time) async {
-    final hour = useDefaultTime ? 9 : time.hour;
-    final minute = useDefaultTime ? 0 : time.minute;
-    // The override applies to the next push: today if it's still ahead,
-    // otherwise tomorrow.
-    final now = DateTime.now();
-    var target = DateTime(now.year, now.month, now.day, hour, minute);
-    if (!target.isAfter(now)) target = target.add(const Duration(days: 1));
-    final date = '${target.year.toString().padLeft(4, '0')}-'
-        '${target.month.toString().padLeft(2, '0')}-'
-        '${target.day.toString().padLeft(2, '0')}';
-    try {
-      await DailyOverrideService.set(
-          topic: topic, date: date, hour: hour, minute: minute);
-      await NotificationService.scheduleDailyTopics(); // re-arm with the override
-      await _loadTodayOverride();
-      if (mounted) {
-        final t = TimeOfDay(hour: hour, minute: minute).format(context);
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Trending topic queued for $date at $t 🔥')),
-        );
-      }
-    } catch (e) {
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Could not queue topic: $e')),
-        );
-      }
     }
   }
 
@@ -382,7 +344,6 @@ class _RoomsListScreenState extends State<RoomsListScreen>
               },
               onDismiss: () => setState(() => _hideVerifyBanner = true),
             ),
-          if (_isAdmin) _AdminTopicCard(onPush: _pushTrendingTopic),
           _DailyTopicCard(
             topic: _todayOverride ?? _daily.todayTopic(),
             loading: _openingDaily,
@@ -687,116 +648,6 @@ class _VerifyEmailBanner extends StatelessWidget {
             onPressed: onDismiss,
           ),
         ],
-      ),
-    );
-  }
-}
-
-/// ADMIN-ONLY: a box to push a "trending" topic that overrides the next daily
-/// topic push for everyone. Shown only to the admin account.
-class _AdminTopicCard extends StatefulWidget {
-  final Future<void> Function(String topic, bool useDefaultTime, TimeOfDay time)
-      onPush;
-  const _AdminTopicCard({required this.onPush});
-
-  @override
-  State<_AdminTopicCard> createState() => _AdminTopicCardState();
-}
-
-class _AdminTopicCardState extends State<_AdminTopicCard> {
-  final _ctrl = TextEditingController();
-  bool _defaultTime = true;
-  TimeOfDay _time = const TimeOfDay(hour: 9, minute: 0);
-  bool _sending = false;
-
-  @override
-  void dispose() {
-    _ctrl.dispose();
-    super.dispose();
-  }
-
-  Future<void> _pickTime() async {
-    final picked = await showTimePicker(context: context, initialTime: _time);
-    if (picked != null) setState(() => _time = picked);
-  }
-
-  Future<void> _send() async {
-    final topic = _ctrl.text.trim();
-    if (topic.isEmpty) return;
-    setState(() => _sending = true);
-    await widget.onPush(topic, _defaultTime, _time);
-    if (mounted) {
-      setState(() {
-        _sending = false;
-        _ctrl.clear();
-      });
-    }
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    return Card(
-      margin: const EdgeInsets.fromLTRB(12, 12, 12, 0),
-      color: const Color(0xFFFFF6E9),
-      shape: RoundedRectangleBorder(
-        borderRadius: BorderRadius.circular(12),
-        side: const BorderSide(color: Color(0xFFF4A261)),
-      ),
-      child: Padding(
-        padding: const EdgeInsets.all(12),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            const Text('📣  Push trending topic (admin)',
-                style: TextStyle(fontWeight: FontWeight.bold)),
-            const SizedBox(height: 8),
-            TextField(
-              controller: _ctrl,
-              minLines: 1,
-              maxLines: 3,
-              textCapitalization: TextCapitalization.sentences,
-              decoration: InputDecoration(
-                hintText: 'Type a debate topic to push to everyone…',
-                filled: true,
-                fillColor: Colors.white,
-                contentPadding:
-                    const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
-                border: OutlineInputBorder(
-                    borderRadius: BorderRadius.circular(8),
-                    borderSide: const BorderSide(color: Color(0xFFE0C9A6))),
-              ),
-            ),
-            const SizedBox(height: 6),
-            Row(
-              children: [
-                Switch(
-                  value: _defaultTime,
-                  onChanged: (v) => setState(() => _defaultTime = v),
-                ),
-                const Expanded(child: Text('Use default push time (9 AM)')),
-                if (!_defaultTime)
-                  TextButton.icon(
-                    onPressed: _pickTime,
-                    icon: const Icon(Icons.schedule, size: 18),
-                    label: Text(_time.format(context)),
-                  ),
-              ],
-            ),
-            Align(
-              alignment: Alignment.centerRight,
-              child: ElevatedButton.icon(
-                onPressed: _sending ? null : _send,
-                icon: _sending
-                    ? const SizedBox(
-                        width: 16,
-                        height: 16,
-                        child: CircularProgressIndicator(strokeWidth: 2))
-                    : const Icon(Icons.send, size: 18),
-                label: const Text('Push to everyone'),
-              ),
-            ),
-          ],
-        ),
       ),
     );
   }
