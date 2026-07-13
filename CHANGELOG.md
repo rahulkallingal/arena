@@ -2,6 +2,22 @@
 
 All notable changes to Arena will be documented in this file.
 
+## [1.10.5] - July 13, 2026
+
+### 🐛 Fixed
+- **Room no longer flips to "choose your side" (watcher mode).** Tapping a
+  notification for a room you're already in stacked a fresh watcher-mode chat
+  screen on top. Now `_openRoom` skips re-opening the room you're viewing and
+  restores your saved stance for that room.
+- **Keyboard no longer pops back up** after opening a message's long-press menu
+  and pressing back — opening the menu now drops the input focus.
+
+### ✨ Added (admin/moderation)
+- **`reportedMessages` Cloud Function** — aggregates the existing `reports`
+  collection by message and returns messages flagged by **2+ distinct users**,
+  for review in the Admin app. (Users could already report messages; this adds
+  the admin view. Reports are private to the admin — no external/legal action.)
+
 ## [1.10.4] - July 13, 2026
 
 ### 🔧 Changed
