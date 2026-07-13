@@ -4,12 +4,14 @@ import 'package:firebase_core/firebase_core.dart';
 import 'package:firebase_messaging/firebase_messaging.dart';
 import 'package:flutter/material.dart';
 
+import 'models/message.dart';
 import 'models/room.dart';
 import 'screens/chat_room_screen.dart';
 import 'screens/login_screen.dart';
 import 'screens/rooms_list_screen.dart';
 import 'services/auth_service.dart';
 import 'services/notification_service.dart';
+import 'services/room_service.dart';
 import 'services/room_notify_service.dart';
 import 'theme.dart';
 
@@ -46,15 +48,27 @@ Future<void> main() async {
 Future<void> _openRoom(String? roomId) async {
   if (roomId == null || roomId.isEmpty) return;
   // Only makes sense once someone is signed in.
-  if (FirebaseAuth.instance.currentUser == null) return;
+  final uid = FirebaseAuth.instance.currentUser?.uid;
+  if (uid == null) return;
+  // Already looking at this room? Don't stack a duplicate (watcher-mode) screen
+  // on top of the one they're using — that's what made a room suddenly flip to
+  // "choose your side".
+  if (roomId == RoomNotifyService.activeRoomId) return;
   try {
     final doc =
         await FirebaseFirestore.instance.collection('rooms').doc(roomId).get();
     if (!doc.exists) return;
     final room = Room.fromDoc(doc);
+    // Re-use the side they picked before in this room, so opening it from a
+    // notification doesn't drop them back to "just watching".
+    Stance stance = Stance.neutral;
+    try {
+      stance = await RoomService().getStoredStance(uid, roomId) ?? Stance.neutral;
+    } catch (_) {/* fall back to neutral */}
     final nav = navigatorKey.currentState;
     if (nav == null) return;
-    nav.push(MaterialPageRoute(builder: (_) => ChatRoomScreen(room: room)));
+    nav.push(MaterialPageRoute(
+        builder: (_) => ChatRoomScreen(room: room, initialStance: stance)));
   } catch (_) {
     // Non-fatal — just don't navigate.
   }

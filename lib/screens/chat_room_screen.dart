@@ -220,6 +220,9 @@ class _ChatRoomScreenState extends State<ChatRoomScreen> {
   /// Long-press menu on a message: delete your own, or report/block others.
   void _showMessageActions(Message m) {
     final isMine = m.senderId == _auth.currentUser?.uid;
+    // Drop focus from the input so dismissing this menu doesn't pop the keyboard
+    // back up when it was minimized before the long-press.
+    FocusScope.of(context).unfocus();
     showModalBottomSheet(
       context: context,
       builder: (sheetContext) {

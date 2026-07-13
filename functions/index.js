@@ -448,3 +448,60 @@ exports.deleteRoom = onRequest(
     }
   }
 );
+
+// ---- Admin: messages reported by 2+ people (for the Admin app) -----------
+// Aggregates the `reports` collection by messageId, counts DISTINCT reporters,
+// and returns messages reported by 2 or more different users, with details.
+// Guarded by the shared secret (sent as x-arena-key). GET or POST.
+//
+//   GET https://asia-south1-arena-a049d.cloudfunctions.net/reportedMessages
+//   Header:  x-arena-key: <BROADCAST_SECRET>
+exports.reportedMessages = onRequest(
+  { region: "asia-south1", secrets: [broadcastSecret] },
+  async (req, res) => {
+    const expected = broadcastSecret.value();
+    const key = req.get("x-arena-key") || req.query.key;
+    if (!expected || key !== expected) {
+      return res.status(401).json({ error: "Unauthorized — wrong or missing key" });
+    }
+    try {
+      const db = getFirestore();
+      const snap = await db.collection("reports").get();
+      const byMsg = {};
+      snap.forEach((doc) => {
+        const d = doc.data() || {};
+        const mid = d.messageId || doc.id;
+        if (!byMsg[mid]) {
+          byMsg[mid] = {
+            messageId: mid,
+            roomId: d.roomId || "",
+            messageText: d.messageText || "",
+            offenderId: d.offenderId || "",
+            offenderName: d.offenderName || "",
+            reporters: new Set(),
+            reasons: [],
+          };
+        }
+        const e = byMsg[mid];
+        if (d.reporterId) e.reporters.add(d.reporterId);
+        if (d.reason) e.reasons.push(String(d.reason));
+      });
+      const reports = Object.values(byMsg)
+        .filter((e) => e.reporters.size >= 2)
+        .map((e) => ({
+          messageId: e.messageId,
+          roomId: e.roomId,
+          messageText: e.messageText,
+          offenderId: e.offenderId,
+          offenderName: e.offenderName,
+          reportCount: e.reporters.size,
+          reasons: e.reasons,
+        }))
+        .sort((a, b) => b.reportCount - a.reportCount);
+      return res.status(200).json({ ok: true, count: reports.length, reports });
+    } catch (e) {
+      console.error("reportedMessages failed:", e);
+      return res.status(500).json({ error: e.message || String(e) });
+    }
+  }
+);
