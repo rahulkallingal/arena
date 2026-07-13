@@ -11,10 +11,11 @@ import 'rooms_list_screen.dart';
 
 /// Sign up / log in with email + password. Toggles between the two modes.
 class LoginScreen extends StatefulWidget {
-  /// Whether to open on the "Create account" view. After logout we pass false so
-  /// returning users land on the Log in form.
+  /// Whether to open on the "Create account" view. Defaults to false so the
+  /// screen opens on the primary **Log in** form (with a "New here? Create an
+  /// account" link); pass true to open straight on sign-up.
   final bool startInSignUp;
-  const LoginScreen({super.key, this.startInSignUp = true});
+  const LoginScreen({super.key, this.startInSignUp = false});
 
   @override
   State<LoginScreen> createState() => _LoginScreenState();
@@ -232,7 +233,7 @@ class _LoginScreenState extends State<LoginScreen> {
                 Text(
                   _isSignUp
                       ? 'Create an account to start debating.'
-                      : 'Log back in to your account.',
+                      : 'Log in to start debating.',
                   textAlign: TextAlign.center,
                   style: const TextStyle(fontSize: 15, color: AppColors.textGrey),
                 ),

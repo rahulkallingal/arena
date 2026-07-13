@@ -2,6 +2,20 @@
 
 All notable changes to Arena will be documented in this file.
 
+## [1.10.4] - July 13, 2026
+
+### 🔧 Changed
+- **Login-first welcome screen** — the auth screen now opens on the **Log in**
+  form by default (with a "New here? Create an account" link) instead of opening
+  on sign-up. Sign-up is one tap away via the toggle. (`startInSignUp` now
+  defaults to false.)
+
+### ✅ Verified
+- Confirmed message avatars: a sender who picked an emoji avatar shows that emoji
+  next to their messages (denormalized `senderAvatar` → `UserAvatar`); users with
+  no avatar fall back to their name's initial. (Own messages show no avatar by
+  design; pre-feature messages show the initial.)
+
 ## [1.10.3] - July 13, 2026
 
 ### 🔧 Changed
