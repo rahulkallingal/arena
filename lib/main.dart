@@ -9,6 +9,7 @@ import 'models/room.dart';
 import 'screens/chat_room_screen.dart';
 import 'screens/login_screen.dart';
 import 'screens/rooms_list_screen.dart';
+import 'screens/verify_email_screen.dart';
 import 'services/auth_service.dart';
 import 'services/notification_service.dart';
 import 'services/room_service.dart';
@@ -179,6 +180,12 @@ class _Root extends StatelessWidget {
         final user = snapshot.data;
         if (user == null) {
           return const LoginScreen();
+        }
+        // Email/password accounts must verify their email before entering, so a
+        // real (owned) address is required. Google accounts are already
+        // verified and pass straight through.
+        if (AuthService().needsEmailVerification) {
+          return const VerifyEmailScreen();
         }
         return const RoomsListScreen();
       },

@@ -2,6 +2,37 @@
 
 All notable changes to Arena will be documented in this file.
 
+## [1.11.0] - July 14, 2026
+
+### 📦 Changed (package rename — Play Store prep)
+- **App package renamed `com.arena.arena` → `com.cryptork.arena`.** `com.arena.arena`
+  was already taken on Google Play, so the store identity moves to
+  `com.cryptork.arena` (namespace, applicationId and MainActivity all updated). A
+  new Android app was registered in Firebase (`arena-a049d`) for the new package
+  with this machine's debug SHA-1 + SHA-256, and a fresh `google-services.json`
+  was swapped in so Google Sign-In and messaging keep working.
+
+### 🔒 Added (account security)
+- **Email verification is now required.** Email/password sign-ups must click the
+  link in their inbox before they can enter Arena (new `VerifyEmailScreen` gate,
+  wired in `main.dart` and the login screen). This blocks fake/throwaway
+  addresses and makes ban-evasion harder. Google Sign-In accounts are already
+  verified and pass straight through. The gate re-checks on resume and continues
+  automatically once the link is tapped.
+
+### ✨ Added
+- **Message counts on rooms.** Every room now tracks a running `messageCount`
+  (incremented in the send batch) and shows "💬 N messages" on the room cards in
+  both the rooms list and Discover — a curiosity hook toward busy debates.
+
+### 🔧 Changed
+- **Sign-up screen no longer shows the avatar picker.** New accounts get a random
+  avatar automatically; users change it inside the app (Profile & avatar). Keeps
+  the sign-up form short and focused.
+- **Room creators pick their side on creation.** Creating a room now asks the
+  creator For/Against/Watching so they enter ready to argue instead of stuck on
+  "just watching"; the choice is remembered like any other room.
+
 ## [1.10.5] - July 13, 2026
 
 ### 🐛 Fixed

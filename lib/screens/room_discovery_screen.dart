@@ -334,13 +334,29 @@ class _RoomDiscoveryScreenState extends State<RoomDiscoveryScreen> {
                   ),
                 ),
                 const SizedBox(width: 8),
-                Icon(Icons.person, size: 16, color: AppColors.textGrey),
+                const Icon(Icons.forum_outlined,
+                    size: 15, color: AppColors.textGrey),
                 const SizedBox(width: 4),
                 Text(
-                  'Created by ${room.createdByName}',
+                  room.messageCount == 0
+                      ? 'No messages yet'
+                      : '${room.messageCount} '
+                          '${room.messageCount == 1 ? 'message' : 'messages'}',
                   style: const TextStyle(
                     fontSize: 12,
                     color: AppColors.textGrey,
+                    fontWeight: FontWeight.w600,
+                  ),
+                ),
+                const Spacer(),
+                Flexible(
+                  child: Text(
+                    'by ${room.createdByName}',
+                    overflow: TextOverflow.ellipsis,
+                    style: const TextStyle(
+                      fontSize: 12,
+                      color: AppColors.textGrey,
+                    ),
                   ),
                 ),
               ],

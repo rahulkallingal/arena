@@ -18,6 +18,7 @@ class Room {
   final bool isDaily; // true for the auto-generated "topic of the day" room
   final DateTime? createdAt;
   final DateTime? lastActivity; // updated on every message, used to sort rooms
+  final int messageCount; // running total of messages, shown on the room card
 
   Room({
     required this.id,
@@ -31,6 +32,7 @@ class Room {
     this.isDaily = false,
     this.createdAt,
     this.lastActivity,
+    this.messageCount = 0,
   });
 
   /// Builds a Room from a Firestore document snapshot.
@@ -48,6 +50,7 @@ class Room {
       isDaily: d['isDaily'] ?? false,
       createdAt: (d['createdAt'] as Timestamp?)?.toDate(),
       lastActivity: (d['lastActivity'] as Timestamp?)?.toDate(),
+      messageCount: (d['messageCount'] as num?)?.toInt() ?? 0,
     );
   }
 
@@ -61,6 +64,7 @@ class Room {
         'createdBy': createdBy,
         'createdByName': createdByName,
         'isDaily': isDaily,
+        'messageCount': 0,
         'createdAt': FieldValue.serverTimestamp(),
         'lastActivity': FieldValue.serverTimestamp(),
       };

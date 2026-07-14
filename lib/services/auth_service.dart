@@ -40,6 +40,15 @@ class AuthService {
 
   bool get isEmailVerified => _auth.currentUser?.emailVerified ?? false;
 
+  /// Whether the signed-in user must verify their email before using the app.
+  /// True only for email/password accounts that haven't verified yet — Google
+  /// sign-in accounts are already verified by Google, so they're never gated.
+  bool get needsEmailVerification {
+    final user = _auth.currentUser;
+    if (user == null || user.emailVerified) return false;
+    return user.providerData.any((p) => p.providerId == 'password');
+  }
+
   String? get email => _auth.currentUser?.email;
 
   /// Sends (or re-sends) the email-verification link to the current user.

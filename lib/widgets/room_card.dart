@@ -107,12 +107,17 @@ class RoomCard extends StatelessWidget {
               Row(
                 children: [
                   _Tag(text: room.category, color: AppColors.secondary),
+                  const SizedBox(width: 8),
+                  _MessageCount(count: room.messageCount),
                   const Spacer(),
-                  Text(
-                    'by ${room.createdByName}',
-                    style: const TextStyle(
-                      fontSize: 12,
-                      color: AppColors.textGrey,
+                  Flexible(
+                    child: Text(
+                      'by ${room.createdByName}',
+                      overflow: TextOverflow.ellipsis,
+                      style: const TextStyle(
+                        fontSize: 12,
+                        color: AppColors.textGrey,
+                      ),
                     ),
                   ),
                 ],
@@ -121,6 +126,34 @@ class RoomCard extends StatelessWidget {
           ),
         ),
       ),
+    );
+  }
+}
+
+/// A small "💬 N" chip showing how many messages a room has, to spark curiosity
+/// about busy debates. Reads a little friendlier than a bare number.
+class _MessageCount extends StatelessWidget {
+  final int count;
+  const _MessageCount({required this.count});
+
+  @override
+  Widget build(BuildContext context) {
+    return Row(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        const Icon(Icons.forum_outlined, size: 14, color: AppColors.textGrey),
+        const SizedBox(width: 4),
+        Text(
+          count == 0
+              ? 'No messages yet'
+              : '$count ${count == 1 ? 'message' : 'messages'}',
+          style: const TextStyle(
+            fontSize: 12,
+            color: AppColors.textGrey,
+            fontWeight: FontWeight.w600,
+          ),
+        ),
+      ],
     );
   }
 }

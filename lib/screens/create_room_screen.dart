@@ -1,9 +1,11 @@
 import 'package:flutter/material.dart';
 
+import '../models/message.dart';
 import '../models/room.dart';
 import '../services/auth_service.dart';
 import '../services/room_service.dart';
 import '../theme.dart';
+import '../widgets/join_stance_dialog.dart';
 import 'chat_room_screen.dart';
 
 /// Form to create a new debate room — name, the topic/question, a category, and
@@ -75,9 +77,20 @@ class _CreateRoomScreenState extends State<CreateRoomScreen> {
         createdByName: _auth.displayName,
       );
       if (!mounted) return;
+      // Ask the creator which side they're on so they enter their own room ready
+      // to argue — not stuck on "just watching". The choice is remembered, so
+      // re-opening the room later keeps them on the same side.
+      final stance =
+          await pickJoinStance(context, topic: topic) ?? Stance.neutral;
+      try {
+        await _rooms.recordJoin(user.uid, room, stance: stance);
+      } catch (_) {/* non-fatal — they can still pick a side inside */}
+      if (!mounted) return;
       // Replace this form with the new room's chat.
       Navigator.of(context).pushReplacement(
-        MaterialPageRoute(builder: (_) => ChatRoomScreen(room: room)),
+        MaterialPageRoute(
+          builder: (_) => ChatRoomScreen(room: room, initialStance: stance),
+        ),
       );
     } catch (e) {
       setState(() => _error = 'Could not create the room. Try again.');

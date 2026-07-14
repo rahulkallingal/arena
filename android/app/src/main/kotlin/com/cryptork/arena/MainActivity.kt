@@ -1,4 +1,4 @@
-package com.arena.arena
+package com.cryptork.arena
 
 import io.flutter.embedding.android.FlutterActivity
 

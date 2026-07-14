@@ -156,6 +156,9 @@ class RoomService {
     batch.set(msgRef, message.toCreateMap());
     batch.update(_rooms.doc(roomId), {
       'lastActivity': FieldValue.serverTimestamp(),
+      // Keep a running total so the rooms list can show "💬 N messages" — a
+      // little hook that makes people curious to jump into a busy debate.
+      'messageCount': FieldValue.increment(1),
     });
     await batch.commit();
   }

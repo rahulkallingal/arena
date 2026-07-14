@@ -5,9 +5,9 @@ import 'package:flutter/material.dart';
 import '../data/avatars.dart';
 import '../services/auth_service.dart';
 import '../theme.dart';
-import '../widgets/avatar_picker.dart';
 import 'legal_screen.dart';
 import 'rooms_list_screen.dart';
+import 'verify_email_screen.dart';
 
 /// Sign up / log in with email + password. Toggles between the two modes.
 class LoginScreen extends StatefulWidget {
@@ -28,9 +28,10 @@ class _LoginScreenState extends State<LoginScreen> {
   final _auth = AuthService();
 
   late bool _isSignUp = widget.startInSignUp;
-  // The avatar shown/selected on the sign-up form. Starts on a random one so a
-  // user who doesn't change it still gets a picture.
-  String _avatar = kAvatarEmojis[Random().nextInt(kAvatarEmojis.length)];
+  // Each new account is given a random avatar automatically. The user can change
+  // it any time inside the app (Profile & avatar), so there's no avatar picker
+  // on the sign-up form itself — it kept the screen busy and confusing.
+  final String _avatar = kAvatarEmojis[Random().nextInt(kAvatarEmojis.length)];
   bool _submitting = false; // email create/login in progress
   bool _googling = false; // Google sign-in in progress
   bool get _busy => _submitting || _googling; // either action running
@@ -175,17 +176,16 @@ class _LoginScreenState extends State<LoginScreen> {
         await _auth.logIn(email: email, password: password);
       }
       if (!mounted) return;
-      if (_isSignUp) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text('Verification email sent to $email — check your '
-                'inbox AND your spam/junk folder.'),
-            duration: const Duration(seconds: 6),
-          ),
-        );
-      }
+      // Sign-ups (and any unverified email/password login) must verify their
+      // email first — they land on the verify gate. Verified users and Google
+      // accounts go straight to the rooms list.
+      final needsVerify = _auth.needsEmailVerification;
       Navigator.of(context).pushReplacement(
-        MaterialPageRoute(builder: (_) => const RoomsListScreen()),
+        MaterialPageRoute(
+          builder: (_) => needsVerify
+              ? const VerifyEmailScreen()
+              : const RoomsListScreen(),
+        ),
       );
     } catch (e) {
       // Highlight the field the error belongs to (email vs password).
@@ -253,20 +253,6 @@ class _LoginScreenState extends State<LoginScreen> {
                       counterText: '',
                       errorText: _nameError,
                     ),
-                  ),
-                  const SizedBox(height: 16),
-                  const Text(
-                    'Pick your avatar',
-                    style: TextStyle(
-                      fontSize: 13,
-                      fontWeight: FontWeight.w600,
-                      color: AppColors.textGrey,
-                    ),
-                  ),
-                  const SizedBox(height: 10),
-                  AvatarPicker(
-                    selected: _avatar,
-                    onSelected: (e) => setState(() => _avatar = e),
                   ),
                   const SizedBox(height: 16),
                 ],

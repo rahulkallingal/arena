@@ -7,7 +7,7 @@ plugins {
 }
 
 android {
-    namespace = "com.arena.arena"
+    namespace = "com.cryptork.arena"
     compileSdk = flutter.compileSdkVersion
     ndkVersion = flutter.ndkVersion
 
@@ -19,7 +19,7 @@ android {
     }
 
     defaultConfig {
-        applicationId = "com.arena.arena"
+        applicationId = "com.cryptork.arena"
         // Firebase Auth/Firestore need at least Android 6 (API 23).
         minSdk = flutter.minSdkVersion
         targetSdk = flutter.targetSdkVersion
