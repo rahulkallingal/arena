@@ -606,3 +606,62 @@ exports.deleteUserAccount = onRequest(
     }
   }
 );
+
+// ---- Admin: create a pre-verified account (e.g. for Play Store review) ---
+// Because email/password sign-ups must verify their email before entering,
+// Google's reviewers (who can't open our inbox) need an account that is ALREADY
+// verified. This creates one with emailVerified=true so they can log straight in.
+// Guarded by the shared secret.
+//
+//   POST https://asia-south1-arena-a049d.cloudfunctions.net/createVerifiedUser
+//   Header:  x-arena-key: <BROADCAST_SECRET>
+//   Body:    { "email": "...", "password": "...", "name": "Reviewer" }
+exports.createVerifiedUser = onRequest(
+  { region: "asia-south1", secrets: [broadcastSecret] },
+  async (req, res) => {
+    if (req.method !== "POST") {
+      return res.status(405).json({ error: "Use POST" });
+    }
+    const expected = broadcastSecret.value();
+    const key = req.get("x-arena-key") || req.query.key;
+    if (!expected || key !== expected) {
+      return res.status(401).json({ error: "Unauthorized — wrong or missing key" });
+    }
+    const b = (req.body && typeof req.body === "object") ? req.body : {};
+    const email = String(b.email || "").trim();
+    const password = String(b.password || "");
+    const name = String(b.name || "Reviewer").trim() || "Reviewer";
+    if (!email.includes("@") || password.length < 6) {
+      return res.status(400).json({ error: "Provide a valid email and a 6+ char password" });
+    }
+    try {
+      const auth = getAuth();
+      let user;
+      try {
+        user = await auth.createUser({
+          email, password, displayName: name, emailVerified: true,
+        });
+      } catch (e) {
+        // Already exists → make sure it's verified and reset its password/name.
+        if (e && e.code === "auth/email-already-exists") {
+          const existing = await auth.getUserByEmail(email);
+          user = await auth.updateUser(existing.uid, {
+            password, displayName: name, emailVerified: true,
+          });
+        } else {
+          throw e;
+        }
+      }
+      // Give them a profile doc too, like a normal signup.
+      await getFirestore().collection("users").doc(user.uid).set({
+        displayName: name, email, createdAt: FieldValue.serverTimestamp(),
+      }, { merge: true });
+      return res.status(200).json({
+        ok: true, uid: user.uid, email, emailVerified: true,
+      });
+    } catch (e) {
+      console.error("createVerifiedUser failed:", e);
+      return res.status(500).json({ error: e.message || String(e) });
+    }
+  }
+);
