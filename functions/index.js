@@ -15,6 +15,7 @@ const { defineSecret } = require("firebase-functions/params");
 const { initializeApp } = require("firebase-admin/app");
 const { getFirestore, FieldValue } = require("firebase-admin/firestore");
 const { getMessaging } = require("firebase-admin/messaging");
+const { getAuth } = require("firebase-admin/auth");
 const crypto = require("crypto");
 
 initializeApp();
@@ -501,6 +502,106 @@ exports.reportedMessages = onRequest(
       return res.status(200).json({ ok: true, count: reports.length, reports });
     } catch (e) {
       console.error("reportedMessages failed:", e);
+      return res.status(500).json({ error: e.message || String(e) });
+    }
+  }
+);
+
+// ---- Admin: delete user accounts + all their data (call from Admin app) --
+// For each email: removes the Firebase Auth account AND everything they own —
+// their profile (users/{uid} + subcollections), every message they posted, any
+// rooms they created (recursively), their votes, and reports they filed.
+// Irreversible. Guarded by the shared secret AND an explicit confirm token.
+//
+//   POST https://asia-south1-arena-a049d.cloudfunctions.net/deleteUserAccount
+//   Header:  x-arena-key: <BROADCAST_SECRET>
+//   Body:    { "emails": ["a@x.com", "b@y.com"], "confirm": "DELETE USERS" }
+exports.deleteUserAccount = onRequest(
+  { region: "asia-south1", secrets: [broadcastSecret] },
+  async (req, res) => {
+    if (req.method !== "POST") {
+      return res.status(405).json({ error: "Use POST" });
+    }
+    const expected = broadcastSecret.value();
+    const key = req.get("x-arena-key") || req.query.key;
+    if (!expected || key !== expected) {
+      return res.status(401).json({ error: "Unauthorized — wrong or missing key" });
+    }
+    const b = (req.body && typeof req.body === "object") ? req.body : {};
+    if (b.confirm !== "DELETE USERS") {
+      return res.status(400).json({
+        error: 'Send {"confirm":"DELETE USERS"} to proceed.',
+      });
+    }
+    const emails = Array.isArray(b.emails)
+      ? b.emails
+      : (b.email ? [b.email] : []);
+    const cleaned = emails.map((e) => String(e || "").trim()).filter(Boolean);
+    if (cleaned.length === 0) {
+      return res.status(400).json({ error: "Provide emails: [ ... ]" });
+    }
+    try {
+      const db = getFirestore();
+      const auth = getAuth();
+      // Snapshot all rooms once; deletes below are idempotent so a stale entry
+      // (a room removed while processing an earlier user) is harmless.
+      const roomsSnap = await db.collection("rooms").get();
+      const results = [];
+
+      for (const email of cleaned) {
+        let uid = null;
+        try {
+          uid = (await auth.getUserByEmail(email)).uid;
+        } catch (_) {
+          results.push({ email, status: "not_found" });
+          continue;
+        }
+        let messagesDeleted = 0;
+        let roomsDeleted = 0;
+
+        // Reports they filed.
+        const reps = await db
+          .collection("reports")
+          .where("reporterId", "==", uid)
+          .get();
+        for (const d of reps.docs) await d.ref.delete();
+
+        // Walk every room: delete rooms they created outright, otherwise strip
+        // their messages and their vote from that room.
+        for (const roomDoc of roomsSnap.docs) {
+          const roomRef = roomDoc.ref;
+          if ((roomDoc.data() || {}).createdBy === uid) {
+            await db.recursiveDelete(roomRef);
+            roomsDeleted++;
+            continue;
+          }
+          const msgs = await roomRef
+            .collection("messages")
+            .where("senderId", "==", uid)
+            .get();
+          for (const m of msgs.docs) {
+            await m.ref.delete();
+            messagesDeleted++;
+          }
+          await roomRef.collection("votes").doc(uid).delete();
+        }
+
+        // Their profile doc + subcollections (joinedRooms, hiddenRooms, pets…).
+        await db.recursiveDelete(db.collection("users").doc(uid));
+        // Finally the login account itself.
+        await auth.deleteUser(uid);
+
+        results.push({
+          email,
+          uid,
+          status: "deleted",
+          messagesDeleted,
+          roomsDeleted,
+        });
+      }
+      return res.status(200).json({ ok: true, results });
+    } catch (e) {
+      console.error("deleteUserAccount failed:", e);
       return res.status(500).json({ error: e.message || String(e) });
     }
   }
