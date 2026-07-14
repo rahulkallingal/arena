@@ -21,6 +21,11 @@ All notable changes to Arena will be documented in this file.
   automatically once the link is tapped.
 
 ### ✨ Added
+- **"Reset password" popup dialog.** "Forgot password?" now opens a small dialog
+  (on the login screen) with its own email field, instead of showing a red error
+  on the login email box. Any email already typed is pre-filled; otherwise the
+  user types it right there — so the reset flow is never blocked by an empty
+  field. Sends the reset link and confirms with a snackbar.
 - **Message counts on rooms.** Every room now tracks a running `messageCount`
   (incremented in the send batch) and shows "💬 N messages" on the room cards in
   both the rooms list and Discover — a curiosity hook toward busy debates.

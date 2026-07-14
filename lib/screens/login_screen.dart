@@ -85,15 +85,72 @@ class _LoginScreenState extends State<LoginScreen> {
     }
   }
 
-  /// Emails a password-reset link to whatever is typed in the email field.
+  /// Opens a popup dialog asking which email to send the reset link to. Works
+  /// whether or not the user already typed something in the email field — if
+  /// they did, it's pre-filled; if not, they can type it right here. This keeps
+  /// "Forgot password?" on the login screen (no full page) and never blocks on
+  /// an empty field.
   Future<void> _forgotPassword() async {
-    final email = _email.text.trim();
     setState(_clearErrors);
-    if (!email.contains('@') || !email.contains('.')) {
-      setState(() => _emailError =
-          'Enter your email above first, then tap "Forgot password".');
-      return;
-    }
+    final controller = TextEditingController(text: _email.text.trim());
+    final email = await showDialog<String>(
+      context: context,
+      builder: (dialogContext) {
+        String? error;
+        return StatefulBuilder(
+          builder: (dialogContext, setDialogState) => AlertDialog(
+            title: const Text('Reset your password'),
+            content: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                const Text(
+                  'Enter the email for your account and we\'ll send you a '
+                  'link to set a new password.',
+                  style: TextStyle(fontSize: 14, color: AppColors.textGrey),
+                ),
+                const SizedBox(height: 16),
+                TextField(
+                  controller: controller,
+                  autofocus: true,
+                  keyboardType: TextInputType.emailAddress,
+                  onSubmitted: (_) {
+                    final value = controller.text.trim();
+                    if (value.contains('@') && value.contains('.')) {
+                      Navigator.of(dialogContext).pop(value);
+                    }
+                  },
+                  decoration: InputDecoration(
+                    labelText: 'Email address',
+                    errorText: error,
+                  ),
+                ),
+              ],
+            ),
+            actions: [
+              TextButton(
+                onPressed: () => Navigator.of(dialogContext).pop(),
+                child: const Text('Cancel'),
+              ),
+              ElevatedButton(
+                onPressed: () {
+                  final value = controller.text.trim();
+                  if (!value.contains('@') || !value.contains('.')) {
+                    setDialogState(() =>
+                        error = 'Enter a valid email address.');
+                    return;
+                  }
+                  Navigator.of(dialogContext).pop(value);
+                },
+                child: const Text('Send reset link'),
+              ),
+            ],
+          ),
+        );
+      },
+    );
+    controller.dispose();
+    if (email == null) return; // cancelled
     setState(() => _submitting = true);
     try {
       await _auth.sendPasswordReset(email);
