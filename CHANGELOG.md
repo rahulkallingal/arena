@@ -2,6 +2,18 @@
 
 All notable changes to Arena will be documented in this file.
 
+## [1.12.0] - July 15, 2026
+
+### 🎨 Added (branding / Play Store prep)
+- **New app icon + branding.** Adopted the Arena logo — a split blue/orange
+  colosseum with a bold "A" and two figures facing off inside. Updated the
+  in-app launcher icon at every density (mdpi→xxxhdpi) and produced the Play
+  Store assets (512 icon, 1024×500 feature graphic, store listing text) under
+  `playstore/`.
+- **18+ confirmation on sign-up.** The Terms checkbox now also confirms the user
+  is 18 or older (Arena is an adults-only open-debate app); the privacy policy's
+  age section was updated to match.
+
 ## [1.11.0] - July 14, 2026
 
 ### 📦 Changed (package rename — Play Store prep)

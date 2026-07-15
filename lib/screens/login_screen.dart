@@ -173,7 +173,7 @@ class _LoginScreenState extends State<LoginScreen> {
     // Terms only need to be accepted when creating a new account, not on login.
     if (_isSignUp && !_agreed) {
       setState(() => _generalError =
-          'Please accept the Terms of Service and Privacy Policy first.');
+          'Please confirm you are 18+ and accept the Terms and Privacy Policy first.');
       return;
     }
     setState(() {
@@ -206,7 +206,7 @@ class _LoginScreenState extends State<LoginScreen> {
 
     if (_isSignUp && !_agreed) {
       setState(() => _generalError =
-          'Please accept the Terms of Service and Privacy Policy first.');
+          'Please confirm you are 18+ and accept the Terms and Privacy Policy first.');
       return;
     }
 
@@ -502,7 +502,8 @@ class _AgreementCheckbox extends StatelessWidget {
                 style: const TextStyle(
                     fontSize: 13, color: AppColors.textGrey, height: 1.4),
                 children: [
-                  const TextSpan(text: 'I agree to the '),
+                  const TextSpan(
+                      text: 'I confirm I am 18 or older and agree to the '),
                   WidgetSpan(
                     alignment: PlaceholderAlignment.middle,
                     child: GestureDetector(
