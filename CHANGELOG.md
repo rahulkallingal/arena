@@ -42,6 +42,12 @@ All notable changes to Arena will be documented in this file.
 - **Profanity warning on room creation.** Creating a room now runs the same
   abusive-language check used for messages against the room **name and topic**,
   warning (but not blocking) before it's created.
+- **Unread badge on rooms.** The Visited list now shows a red count on each room
+  for how many messages arrived since you last opened it (clears when you open
+  or leave the room).
+- **Manage blocked users.** Account menu → **Blocked users** lists everyone
+  you've blocked (by name) with an **Unblock** button. (Blocks are still
+  device-local and hide the person across every room.)
 
 ## [1.12.0] - July 15, 2026
 

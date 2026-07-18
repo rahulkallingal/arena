@@ -58,6 +58,15 @@ class _ChatRoomScreenState extends State<ChatRoomScreen> {
     RoomNotifyService.subscribeParticipant(widget.room.id);
     _loadBlocked();
     _loadNotify();
+    _markRead();
+  }
+
+  /// Clears the unread badge for this room by recording the current message
+  /// count as "seen". Runs on open and again on leave (to catch messages that
+  /// arrived while it was on screen).
+  void _markRead() {
+    final uid = _auth.currentUser?.uid;
+    if (uid != null) _rooms.markRoomRead(uid, widget.room.id);
   }
 
   Future<void> _loadNotify() async {
@@ -167,6 +176,9 @@ class _ChatRoomScreenState extends State<ChatRoomScreen> {
     if (RoomNotifyService.activeRoomId == widget.room.id) {
       RoomNotifyService.activeRoomId = null;
     }
+    // Catch any messages that arrived while the room was open, so leaving marks
+    // them read too.
+    _markRead();
     _input.dispose();
     _inputFocus.dispose();
     _scroll.dispose();
@@ -401,7 +413,7 @@ class _ChatRoomScreenState extends State<ChatRoomScreen> {
   }
 
   Future<void> _blockUser(Message m) async {
-    final updated = await _moderation.blockUser(m.senderId);
+    final updated = await _moderation.blockUser(m.senderId, name: m.senderName);
     if (mounted) {
       setState(() => _blocked = updated);
       _toast('${m.senderName} blocked.');

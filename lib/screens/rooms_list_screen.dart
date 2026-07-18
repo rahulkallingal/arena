@@ -17,6 +17,7 @@ import '../widgets/user_avatar.dart';
 import 'chat_room_screen.dart';
 import 'create_room_screen.dart';
 import 'login_screen.dart';
+import 'blocked_users_screen.dart';
 import 'profile_screen.dart';
 import 'room_discovery_screen.dart';
 
@@ -298,6 +299,9 @@ class _RoomsListScreenState extends State<RoomsListScreen>
                     .then((_) => setState(() {})); // refresh the avatar icon
               } else if (value == 'password') {
                 _showChangePassword();
+              } else if (value == 'blocked') {
+                Navigator.of(context).push(MaterialPageRoute(
+                    builder: (_) => const BlockedUsersScreen()));
               } else if (value == 'logout') {
                 _logout();
               }
@@ -309,6 +313,8 @@ class _RoomsListScreenState extends State<RoomsListScreen>
               if (_auth.hasPasswordProvider)
                 const PopupMenuItem(
                     value: 'password', child: Text('Change password')),
+              const PopupMenuItem(
+                  value: 'blocked', child: Text('Blocked users')),
               const PopupMenuItem(value: 'logout', child: Text('Log out')),
             ],
           ),
@@ -405,6 +411,9 @@ class _RoomsListScreenState extends State<RoomsListScreen>
                     final room = list[i];
                     return RoomCard(
                       room: room,
+                      // On the Visited tab, badge how many messages arrived
+                      // since this user last opened the room.
+                      unreadBaseline: _showJoined ? room.lastSeenCount : null,
                       onTap: () => _openRoom(room),
                       onLongPress: () => _roomCardMenu(room),
                     );
