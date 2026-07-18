@@ -88,7 +88,9 @@ exports.notifyRoomOnNewMessage = onDocumentCreated(
       await getMessaging().send({
         topic: topicFor(roomId),
         notification: { title: roomName, body: body },
-        data: { roomId: roomId, type: "room_message" },
+        // senderId lets the sender's own device drop this push (you subscribe to
+        // your room's topic, so FCM would otherwise notify you of your own message).
+        data: { roomId: roomId, type: "room_message", senderId: msg.senderId || "" },
         android: {
           priority: "high",
           notification: { channelId: "room_messages" },
@@ -290,6 +292,32 @@ exports.verifyRoomPassword = onCall({ region: "asia-south1" }, async (req) => {
     .update(salt + password.trim())
     .digest("hex");
   return { ok: attempt === storedHash };
+});
+
+// ---- Let a room's creator delete their own room --------------------------
+// Callable from the app. Verifies (server-side) that the caller created the
+// room, then recursively deletes it and everything under it (messages, votes,
+// the secure password subdoc).
+exports.deleteMyRoom = onCall({ region: "asia-south1" }, async (req) => {
+  if (!req.auth) {
+    throw new HttpsError("unauthenticated", "Sign in first.");
+  }
+  const roomId = String((req.data && req.data.roomId) || "").trim();
+  if (!roomId) {
+    throw new HttpsError("invalid-argument", "Missing roomId.");
+  }
+  const db = getFirestore();
+  const ref = db.collection("rooms").doc(roomId);
+  const snap = await ref.get();
+  if (!snap.exists) {
+    throw new HttpsError("not-found", "Room not found.");
+  }
+  if ((snap.data() || {}).createdBy !== req.auth.uid) {
+    throw new HttpsError(
+        "permission-denied", "Only the room's creator can delete it.");
+  }
+  await db.recursiveDelete(ref);
+  return { ok: true };
 });
 
 // ---- Clean up stale, empty rooms ----------------------------------------

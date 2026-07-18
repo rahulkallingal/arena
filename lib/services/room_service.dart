@@ -204,6 +204,24 @@ class RoomService {
     await _rooms.doc(roomId).collection('messages').doc(messageId).delete();
   }
 
+  /// Edits the text of a message you sent. Marks it `edited` so the UI can show
+  /// an "(edited)" note. Firestore rules only let the original author do this.
+  Future<void> editMessage(
+      String roomId, String messageId, String newText) async {
+    await _rooms.doc(roomId).collection('messages').doc(messageId).update({
+      'text': newText.trim(),
+      'edited': true,
+    });
+  }
+
+  /// Deletes a whole room you created (and all its messages/votes) via the
+  /// deleteMyRoom Cloud Function, which checks you're the creator server-side.
+  Future<void> deleteMyRoom(String roomId) async {
+    final callable = FirebaseFunctions.instanceFor(region: 'asia-south1')
+        .httpsCallable('deleteMyRoom');
+    await callable.call<dynamic>({'roomId': roomId});
+  }
+
   /// Adds or changes the current user's reaction on a message. Passing the same
   /// emoji the user already has removes it (toggle off).
   Future<void> toggleReaction({

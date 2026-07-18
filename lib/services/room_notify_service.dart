@@ -64,6 +64,36 @@ class RoomNotifyService {
     }
   }
 
+  /// Drops EVERY push subscription on this device by deleting its FCM token —
+  /// room bells (room_*), trending/participant topics, and the all_users
+  /// broadcast. Called on logout so the signed-out user stops getting any room
+  /// notifications. A fresh token is created lazily on the next subscribe.
+  static Future<void> clearAllSubscriptions() async {
+    try {
+      await FirebaseMessaging.instance.deleteToken();
+    } catch (_) {
+      // Best-effort — offline / messaging unavailable.
+    }
+  }
+
+  /// Re-subscribes this device to every room whose 🔔 bell the user had turned
+  /// on (remembered in prefs). Called on login, since logout deletes the token
+  /// and with it all room subscriptions.
+  static Future<void> resubscribeSavedRooms() async {
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      const prefix = 'notify_';
+      for (final key in prefs.getKeys()) {
+        if (key.startsWith(prefix) && (prefs.getBool(key) ?? false)) {
+          final roomId = key.substring(prefix.length);
+          await FirebaseMessaging.instance.subscribeToTopic(topicFor(roomId));
+        }
+      }
+    } catch (_) {
+      // Best-effort.
+    }
+  }
+
   /// Topic for everyone who has taken part in a room. The Cloud Function pushes
   /// a "your debate is trending, jump back in" alert here when the room heats up,
   /// to pull participants back — even if they never turned on the 🔔 bell.
@@ -79,6 +109,17 @@ class RoomNotifyService {
           .subscribeToTopic(participantsTopicFor(roomId));
     } catch (_) {
       // Offline / messaging unavailable — must not break the chat.
+    }
+  }
+
+  /// Unsubscribes this device from a room's "trending" re-engagement topic.
+  /// Called when the user leaves a room. Best-effort — never throws.
+  static Future<void> unsubscribeParticipant(String roomId) async {
+    try {
+      await FirebaseMessaging.instance
+          .unsubscribeFromTopic(participantsTopicFor(roomId));
+    } catch (_) {
+      // Best-effort.
     }
   }
 

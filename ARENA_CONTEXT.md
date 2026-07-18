@@ -12,10 +12,27 @@
 - **How to work with Rahul:** plain language, no jargon, small numbered steps,
   explain each command before he runs it.
 
-## CURRENT STATUS (updated 2026-07-13)
+## CURRENT STATUS (updated 2026-07-18)
 
 > This section is the up-to-date snapshot. The sections further down are older
 > background; when they disagree, trust this + `CHANGELOG.md` + `git log`.
+
+**Now in Google Play closed testing** (14-day track) as **Arena (Early Access)**
+by **C-Caps**, `com.cryptork.arena`. **Google Sign-In needs the Play App Signing
+key's SHA-1 AND SHA-256 in Firebase** (Play re-signs the AAB, so the upload-key
+SHA alone fails with "not registered to use OAuth2.0"). Added 2026-07-18 — sign-in
+verified working on the Play build after that.
+
+**v1.13.0 (2026-07-18) — needs CF redeploy + rules publish + rebuild:** fixed
+private-room password join (creator no longer prompted; outsiders verified via
+`verifyRoomPassword` — the old local check always failed); no self-notification
+(room pushes now carry `senderId`, the device drops its own); notifications stop
+after logout (logout deletes the FCM token, clearing all room/broadcast subs);
+swipe-to-reply reopens the keyboard. Added: **Leave room** (⋮ menu in chat),
+**Delete room** for the creator (new callable `deleteMyRoom`), **Edit message**
+(rules now let an author edit their own `text`), **Change display name** (Profile
+✏️), and the message profanity check now also runs on the room **name + topic**
+at creation.
 
 **Auth & accounts (Firebase project `arena-a049d`, on the Blaze plan):**
 - Email/password + Google sign-in + Terms/Privacy gating (Terms only on signup).
@@ -112,6 +129,7 @@ The value is baked into the **private Admin app** (`~/admin`, `lib/config.dart`)
 | `clearAllRooms` | HTTP (secret) | wipe ALL rooms (`confirm:"DELETE ALL ROOMS"`) |
 | `reportedMessages` | HTTP (secret) | messages with 2+ distinct reporters |
 | `verifyRoomPassword` | Callable (auth) | server-side private-room password check |
+| `deleteMyRoom` | Callable (auth) | a room's creator deletes it + all its messages |
 | `cleanupStaleRooms` | Scheduled (daily) | delete empty rooms idle 7+ days |
 
 Base URL: `https://asia-south1-arena-a049d.cloudfunctions.net/<name>`. HTTP admin

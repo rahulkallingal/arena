@@ -94,7 +94,17 @@ void _wireUserReplyTopic() {
       final previous = _replyTopicUid;
       _replyTopicUid = uid;
       if (previous != null) await RoomNotifyService.unsubscribeUser(previous);
-      if (uid != null) await RoomNotifyService.subscribeUser(uid);
+      if (uid == null) {
+        // Logged out: drop every push subscription on this device (room bells,
+        // trending/participant topics, broadcasts) so notifications stop.
+        await RoomNotifyService.clearAllSubscriptions();
+      } else {
+        // Logged in: (re)subscribe the personal reply topic, the app-wide
+        // broadcast topic, and any rooms whose bell this user had turned on.
+        await RoomNotifyService.subscribeUser(uid);
+        await RoomNotifyService.subscribeAll();
+        await RoomNotifyService.resubscribeSavedRooms();
+      }
     });
   } catch (_) {
     // Push is optional — never block startup.
@@ -113,6 +123,10 @@ void _setupPushNotifications() {
     // When a push arrives while the app is open, show it ourselves — unless the
     // user is already looking at that very room.
     FirebaseMessaging.onMessage.listen((message) {
+      // Never notify you of your own message — you're subscribed to your room's
+      // topic, so FCM delivers your own sends back to you.
+      final myUid = FirebaseAuth.instance.currentUser?.uid;
+      if (myUid != null && message.data['senderId'] == myUid) return;
       final roomId = message.data['roomId'] as String?;
       // If the user is already looking at that room they can see the message,
       // so don't pop a redundant notification.

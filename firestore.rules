@@ -63,11 +63,17 @@ service cloud.firestore {
         // You may only post as yourself, and messages can't be edited.
         allow create: if signedIn()
                       && request.resource.data.senderId == request.auth.uid;
-        // The only allowed edit is changing the `reactions` map (emoji
-        // reactions). Message text/sender/stance can never be edited.
+        // Anyone may change only the `reactions` map (emoji reactions). The
+        // message's own author may also edit its `text` (which sets `edited`).
+        // sender/stance/createdAt can never be changed.
         allow update: if signedIn()
-                      && request.resource.data.diff(resource.data)
-                           .affectedKeys().hasOnly(['reactions']);
+                      && (
+                        request.resource.data.diff(resource.data)
+                             .affectedKeys().hasOnly(['reactions'])
+                        || (resource.data.senderId == request.auth.uid
+                            && request.resource.data.diff(resource.data)
+                                 .affectedKeys().hasOnly(['text', 'edited']))
+                      );
         // You may delete your own message (used by moderation later).
         allow delete: if signedIn()
                       && resource.data.senderId == request.auth.uid;

@@ -2,6 +2,47 @@
 
 All notable changes to Arena will be documented in this file.
 
+## [1.13.0] - July 18, 2026
+
+> ⚠️ **Shipping this release needs three steps:** rebuild the app, **redeploy the
+> Cloud Functions** (`firebase deploy --only functions` — adds `deleteMyRoom` and
+> the `senderId` on room pushes), and **publish `firestore.rules`**
+> (`firebase deploy --only firestore:rules` — allows a message author to edit
+> their own text). Do the deploy/publish on Windows.
+
+### 🐛 Fixed
+- **Private rooms are joinable again.** Two bugs: the creator was wrongly asked
+  for the password to their own room, and the password prompt used a stale local
+  check against a hash that is always empty now (it lives server-side), so the
+  correct password was always rejected. The creator (and anyone already in) now
+  skips the prompt, and outsiders are verified via the `verifyRoomPassword`
+  Cloud Function.
+- **No more notification for your own message.** You're subscribed to your
+  room's topic, so FCM was delivering your own sends back to you. Each push now
+  carries the sender's id and your device drops pushes from itself.
+- **Notifications stop after logout.** Logging out now clears every push
+  subscription on the device (room bells, trending, broadcasts) by dropping the
+  FCM token; logging back in re-subscribes what's needed.
+- **Swipe-to-reply opens the keyboard again** so you can start typing the reply
+  immediately.
+
+### ✨ Added
+- **Leave a room.** A ⋮ menu in the chat's top bar → **Leave room** turns off
+  that room's notifications, removes it from your Visited list, and returns you
+  to the list. The room is untouched for everyone else; you can rejoin anytime.
+- **Delete your own room.** Long-press a room in **My Rooms** → **Delete room**
+  (creator only). Backed by the secret-free callable `deleteMyRoom` Cloud
+  Function, which confirms you're the creator, then recursively deletes the room
+  and all its messages/votes. Cannot be undone.
+- **Edit a message.** Long-press your own message → **Edit message**. Edited
+  messages show a small "edited" note. (Firestore rules now let an author change
+  only their own message's `text`; everyone else is still limited to reactions.)
+- **Change your display name.** The Profile screen has an ✏️ next to your name to
+  rename yourself (messages already sent keep the old name).
+- **Profanity warning on room creation.** Creating a room now runs the same
+  abusive-language check used for messages against the room **name and topic**,
+  warning (but not blocking) before it's created.
+
 ## [1.12.0] - July 15, 2026
 
 ### 🎨 Added (branding / Play Store prep)
