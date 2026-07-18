@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:share_plus/share_plus.dart';
 
 import '../data/profanity.dart';
 import '../models/message.dart';
@@ -169,6 +170,25 @@ class _ChatRoomScreenState extends State<ChatRoomScreen> {
     messenger.showSnackBar(
       SnackBar(content: Text('You left "${widget.room.name}"')),
     );
+  }
+
+  /// Opens the phone's share sheet with an invite to this room. Recipients open
+  /// Arena → Discover → Join by Code and paste the code.
+  Future<void> _shareRoom() async {
+    final r = widget.room;
+    final buffer = StringBuffer()
+      ..writeln('Join my debate on Arena 🔥')
+      ..writeln()
+      ..writeln('"${r.name}" — ${r.topic}')
+      ..writeln()
+      ..writeln('In the Arena app: tap Discover → Join by Code → paste:')
+      ..writeln(r.id);
+    if (r.isPrivate) {
+      buffer
+        ..writeln()
+        ..writeln("(It's a private room — you'll also need the password from me.)");
+    }
+    await Share.share(buffer.toString(), subject: 'Join "${r.name}" on Arena');
   }
 
   @override
@@ -472,9 +492,18 @@ class _ChatRoomScreenState extends State<ChatRoomScreen> {
           PopupMenuButton<String>(
             icon: const Icon(Icons.more_vert, color: Colors.white),
             onSelected: (value) {
+              if (value == 'share') _shareRoom();
               if (value == 'leave') _leaveRoom();
             },
             itemBuilder: (_) => const [
+              PopupMenuItem(
+                value: 'share',
+                child: ListTile(
+                  contentPadding: EdgeInsets.zero,
+                  leading: Icon(Icons.share, color: AppColors.secondary),
+                  title: Text('Share room'),
+                ),
+              ),
               PopupMenuItem(
                 value: 'leave',
                 child: ListTile(

@@ -48,6 +48,10 @@ All notable changes to Arena will be documented in this file.
 - **Manage blocked users.** Account menu → **Blocked users** lists everyone
   you've blocked (by name) with an **Unblock** button. (Blocks are still
   device-local and hide the person across every room.)
+- **Share a room.** The chat ⋮ menu now has **Share room**, which opens the
+  phone's share sheet with an invite (room name, topic, and the join code to
+  paste into Discover → Join by Code). Private rooms note that the password is
+  needed too.
 
 ## [1.12.0] - July 15, 2026
 

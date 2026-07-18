@@ -26,6 +26,7 @@ dependencies:
   timezone: ^0.11.0
   google_sign_in: ^7.2.0
   cloud_functions: ^6.3.3
+  share_plus: ^10.1.4
 
   # NOTE: The packages below are added during setup with ONE command so their
   # versions always match your Flutter install (see SETUP_WINDOWS.md, Step 3):
