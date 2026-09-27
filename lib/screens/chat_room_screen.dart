@@ -59,7 +59,16 @@ class _ChatRoomScreenState extends State<ChatRoomScreen> {
     RoomNotifyService.subscribeParticipant(widget.room.id);
     _loadBlocked();
     _loadNotify();
+    _autoNotify();
     _markRead();
+  }
+
+  /// Opening a room means you're in the debate → notify by default, unless the
+  /// user already chose a bell setting for this room.
+  Future<void> _autoNotify() async {
+    if (await RoomNotifyService.autoEnable(widget.room.id) && mounted) {
+      setState(() => _notifyOn = true);
+    }
   }
 
   /// Clears the unread badge for this room by recording the current message

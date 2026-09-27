@@ -1,3 +1,4 @@
+import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_messaging/firebase_messaging.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
@@ -141,6 +142,32 @@ class RoomNotifyService {
       return true;
     } catch (_) {
       return false;
+    }
+  }
+
+  /// Turns the bell ON for every room this user is part of — rooms they
+  /// opened ("Visited") and rooms they created ("My Rooms") — skipping any
+  /// where they explicitly chose a setting. Runs on login/startup so existing
+  /// users (and fresh installs) get notified without re-posting in each room.
+  /// Best-effort — never throws.
+  static Future<void> autoEnableMyRooms(String uid) async {
+    try {
+      final db = FirebaseFirestore.instance;
+      final joined =
+          await db.collection('users').doc(uid).collection('joinedRooms').get();
+      final created = await db
+          .collection('rooms')
+          .where('createdBy', isEqualTo: uid)
+          .get();
+      final ids = {
+        ...joined.docs.map((d) => (d.data()['roomId'] as String?) ?? d.id),
+        ...created.docs.map((d) => d.id),
+      };
+      for (final id in ids) {
+        await autoEnable(id);
+      }
+    } catch (_) {
+      // Offline / permission issue — the app must still work.
     }
   }
 

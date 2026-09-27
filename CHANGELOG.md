@@ -5,6 +5,12 @@ All notable changes to Arena will be documented in this file.
 ## [Unreleased]
 
 ### 🐛 Fixed
+- **Still no room notifications for readers.** v1.13.1 only turned the bell on
+  when you posted/created, so people who mostly read (and fresh installs, which
+  reset bell prefs) were never subscribed. Now the bell is ON by default for
+  every room you're part of: opening a room turns it on, and on login/startup
+  `RoomNotifyService.autoEnableMyRooms` subscribes all your Visited + My Rooms.
+  An explicit "off" is still respected.
 - **Visited tab said "No messages yet" on busy rooms** (e.g. Migration, 106
   messages). Visited entries are saved snapshots in `users/{uid}/joinedRooms`
   that never stored `messageCount`, so the card always read 0. The card now

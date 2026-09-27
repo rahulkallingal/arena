@@ -104,6 +104,8 @@ void _wireUserReplyTopic() {
         await RoomNotifyService.subscribeUser(uid);
         await RoomNotifyService.subscribeAll();
         await RoomNotifyService.resubscribeSavedRooms();
+        // Rooms they're part of notify by default (bell starts ON).
+        await RoomNotifyService.autoEnableMyRooms(uid);
       }
     });
   } catch (_) {
