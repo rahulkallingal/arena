@@ -429,6 +429,18 @@ class _RoomsListScreenState extends State<RoomsListScreen>
 
   Future<void> _openRoom(Room room) async {
     final uid = _auth.currentUser!.uid;
+    // Don't open a room that has been deleted — clear the stale Visited entry.
+    if (!await _rooms.roomExists(room.id)) {
+      try {
+        await _rooms.removeVisited(uid, room.id);
+      } catch (_) {/* non-fatal */}
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('This room no longer exists.')),
+        );
+      }
+      return;
+    }
     // Use the side they picked last time; only ask the first time.
     Stance? stance;
     try {
@@ -569,6 +581,14 @@ class _RoomsListScreenState extends State<RoomsListScreen>
     if (confirm != true) return;
     try {
       await _rooms.deleteMyRoom(room.id);
+      // The room is gone server-side; also drop it from this user's own Visited
+      // history so it doesn't linger as a dead room they can tap into.
+      final uid = _auth.currentUser?.uid;
+      if (uid != null) {
+        try {
+          await _rooms.removeVisited(uid, room.id);
+        } catch (_) {/* non-fatal */}
+      }
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(content: Text('Deleted "${room.name}"')),

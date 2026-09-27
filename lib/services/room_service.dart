@@ -72,7 +72,9 @@ class RoomService {
       createdBy: createdBy,
       createdByName: createdByName,
     );
-    final ref = await _rooms.add(room.toCreateMap());
+    final data = room.toCreateMap();
+    data['code'] = await _generateUniqueCode();
+    final ref = await _rooms.add(data);
     if (isPrivate && password != null && password.trim().isNotEmpty) {
       final salt = _randomSalt();
       final hash =
@@ -80,6 +82,47 @@ class RoomService {
       await ref.collection('secure').doc('auth').set({'hash': hash, 'salt': salt});
     }
     return ref.id;
+  }
+
+  /// A random 6-digit join code, checked against existing rooms so it's unique.
+  Future<String> _generateUniqueCode() async {
+    final rnd = Random.secure();
+    for (var i = 0; i < 6; i++) {
+      final code = (100000 + rnd.nextInt(900000)).toString(); // 100000-999999
+      final hit = await _rooms.where('code', isEqualTo: code).limit(1).get();
+      if (hit.docs.isEmpty) return code;
+    }
+    return (100000 + rnd.nextInt(900000)).toString(); // give up dedup, still valid
+  }
+
+  /// Whether a room still exists (false if it was deleted). On error assumes
+  /// it exists, so a transient network blip doesn't hide a real room.
+  Future<bool> roomExists(String roomId) async {
+    try {
+      final doc = await _rooms.doc(roomId).get();
+      return doc.exists;
+    } catch (_) {
+      return true;
+    }
+  }
+
+  /// Finds a room by its 6-digit join code, or null if none matches.
+  Future<Room?> findRoomByCode(String code) async {
+    final snap =
+        await _rooms.where('code', isEqualTo: code.trim()).limit(1).get();
+    if (snap.docs.isEmpty) return null;
+    return Room.fromDoc(snap.docs.first);
+  }
+
+  /// The short code to share for a room. Falls back to the room id for old
+  /// rooms created before codes existed.
+  Future<String> getShareCode(String roomId) async {
+    try {
+      final doc = await _rooms.doc(roomId).get();
+      final code = doc.data()?['code'] as String?;
+      if (code != null && code.isNotEmpty) return code;
+    } catch (_) {/* fall through */}
+    return roomId;
   }
 
   /// A random salt (hex) for a private room's password hash.

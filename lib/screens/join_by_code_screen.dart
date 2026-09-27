@@ -106,11 +106,11 @@ class _JoinByCodeScreenState extends State<JoinByCodeScreen> {
     final code = _codeController.text.trim();
 
     if (code.isEmpty) {
-      setState(() => _error = 'Please enter a room ID or paste a link');
+      setState(() => _error = 'Please enter a room code or paste a link');
       return;
     }
 
-    // Extract room ID from link if pasted
+    // Extract room ID from a pasted link if present.
     String roomId = code;
     if (code.contains('/room/')) {
       try {
@@ -127,21 +127,28 @@ class _JoinByCodeScreenState extends State<JoinByCodeScreen> {
     });
 
     try {
-      // Find room by ID
-      final doc =
-          await FirebaseFirestore.instance.collection('rooms').doc(roomId).get();
+      // A 6-digit code is looked up by the room's `code` field; anything else is
+      // treated as a raw room id (old links/shares still work).
+      Room? room;
+      if (RegExp(r'^\d{6}$').hasMatch(roomId)) {
+        room = await RoomService().findRoomByCode(roomId);
+      } else {
+        final doc = await FirebaseFirestore.instance
+            .collection('rooms')
+            .doc(roomId)
+            .get();
+        if (doc.exists) room = Room.fromDoc(doc);
+      }
 
       if (!mounted) return;
 
-      if (!doc.exists) {
+      if (room == null) {
         setState(() {
           _searching = false;
-          _error = 'Room not found. Check the ID and try again.';
+          _error = 'Room not found. Check the code and try again.';
         });
         return;
       }
-
-      final room = Room.fromDoc(doc);
 
       if (!mounted) return;
       setState(() => _searching = false);
@@ -178,7 +185,7 @@ class _JoinByCodeScreenState extends State<JoinByCodeScreen> {
       Navigator.pushReplacement(
         context,
         MaterialPageRoute(
-          builder: (_) => ChatRoomScreen(room: room, initialStance: stance!),
+          builder: (_) => ChatRoomScreen(room: room!, initialStance: stance!),
         ),
       );
     } catch (e) {
@@ -222,7 +229,7 @@ class _JoinByCodeScreenState extends State<JoinByCodeScreen> {
             children: [
               const SizedBox(height: 20),
               const Text(
-                'Enter Room ID or Paste Link',
+                'Enter Room Code or Paste Link',
                 style: TextStyle(
                   fontSize: 18,
                   fontWeight: FontWeight.bold,
@@ -230,7 +237,7 @@ class _JoinByCodeScreenState extends State<JoinByCodeScreen> {
               ),
               const SizedBox(height: 8),
               const Text(
-                'You can paste the room ID or the full link that was shared with you.',
+                'Enter the 6-digit room code, or paste the full link shared with you.',
                 style: TextStyle(
                   color: AppColors.textGrey,
                   fontSize: 14,
@@ -242,7 +249,7 @@ class _JoinByCodeScreenState extends State<JoinByCodeScreen> {
               TextField(
                 controller: _codeController,
                 decoration: InputDecoration(
-                  hintText: 'Enter room ID or paste link...',
+                  hintText: 'Enter 6-digit code or paste link...',
                   border: OutlineInputBorder(
                     borderRadius: BorderRadius.circular(12),
                     borderSide: const BorderSide(color: AppColors.border),

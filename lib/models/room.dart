@@ -26,6 +26,10 @@ class Room {
   /// don't wrongly look "unread".
   final int lastSeenCount;
 
+  /// Short 6-digit code people type in "Join by Code" to enter this room
+  /// (friendlier than the long Firestore id). Empty for old rooms.
+  final String code;
+
   Room({
     required this.id,
     required this.name,
@@ -40,6 +44,7 @@ class Room {
     this.lastActivity,
     this.messageCount = 0,
     this.lastSeenCount = 0,
+    this.code = '',
   });
 
   /// Builds a Room from a Firestore document snapshot.
@@ -58,6 +63,7 @@ class Room {
       createdAt: (d['createdAt'] as Timestamp?)?.toDate(),
       lastActivity: (d['lastActivity'] as Timestamp?)?.toDate(),
       messageCount: (d['messageCount'] as num?)?.toInt() ?? 0,
+      code: (d['code'] as String?) ?? '',
     );
   }
 

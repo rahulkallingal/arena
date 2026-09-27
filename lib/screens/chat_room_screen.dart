@@ -176,13 +176,14 @@ class _ChatRoomScreenState extends State<ChatRoomScreen> {
   /// Arena → Discover → Join by Code and paste the code.
   Future<void> _shareRoom() async {
     final r = widget.room;
+    final code = await _rooms.getShareCode(r.id);
     final buffer = StringBuffer()
       ..writeln('Join my debate on Arena 🔥')
       ..writeln()
       ..writeln('"${r.name}" — ${r.topic}')
       ..writeln()
       ..writeln('In the Arena app: tap Discover → Join by Code → paste:')
-      ..writeln(r.id);
+      ..writeln(code);
     if (r.isPrivate) {
       buffer
         ..writeln()
