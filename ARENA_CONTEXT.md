@@ -14,6 +14,15 @@
 
 ## CURRENT STATUS (updated 2026-09-27)
 
+**v1.13.2 (2026-09-27) — SHIPPED to Play closed test (versionCode 6), app-only:**
+room bell now ON by default for every room you're part of (opening a room, and
+on login/startup `autoEnableMyRooms` subscribes all Visited + My Rooms; explicit
+off respected) — v1.13.1's post/create-only trigger left readers unsubscribed.
+Visited tab cards now show the live message count (snapshots lacked it).
+Google sign-in on APK (upload-key) installs fixed by registering the upload
+key SHA-1/SHA-256 in Firebase (config only). Superseded v5 while it was still
+in Play review.
+
 **v1.13.1 (2026-09-27) — SHIPPED to Play closed test (versionCode 5), app-only:**
 room 🔔 bell now auto-turns ON when you create/post in a room (it defaulted OFF
 and nobody was subscribed, so room pushes reached no one); daily Topic of the Day

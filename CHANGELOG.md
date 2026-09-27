@@ -2,7 +2,7 @@
 
 All notable changes to Arena will be documented in this file.
 
-## [Unreleased]
+## [1.13.2] - September 27, 2026 (Play versionCode 6, closed test)
 
 ### 🐛 Fixed
 - **Still no room notifications for readers.** v1.13.1 only turned the bell on
