@@ -116,7 +116,15 @@ class RoomCard extends StatelessWidget {
                 children: [
                   _Tag(text: room.category, color: AppColors.secondary),
                   const SizedBox(width: 8),
-                  _MessageCount(count: room.messageCount),
+                  // Visited entries are saved snapshots without a message
+                  // count, so read the room's live count there.
+                  unreadBaseline != null
+                      ? StreamBuilder<int>(
+                          stream: RoomService().watchMessageCount(room.id),
+                          builder: (context, snapshot) => _MessageCount(
+                              count: snapshot.data ?? room.messageCount),
+                        )
+                      : _MessageCount(count: room.messageCount),
                   const Spacer(),
                   Flexible(
                     child: Text(

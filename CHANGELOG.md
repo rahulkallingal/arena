@@ -2,6 +2,18 @@
 
 All notable changes to Arena will be documented in this file.
 
+## [Unreleased]
+
+### 🐛 Fixed
+- **Visited tab said "No messages yet" on busy rooms** (e.g. Migration, 106
+  messages). Visited entries are saved snapshots in `users/{uid}/joinedRooms`
+  that never stored `messageCount`, so the card always read 0. The card now
+  streams the room's live count on the Visited tab (`room_card.dart`). The data
+  itself was always correct.
+- **Google sign-in failed on APK installs** (`UNREGISTERED_ON_API_CONSOLE`,
+  app silently stayed on the login page): the upload key's SHA-1/SHA-256 was not
+  registered in Firebase. Registered 2026-09-27 — config only, no rebuild.
+
 ## [1.13.1] - September 27, 2026 (Play versionCode 5, closed test)
 
 App-only release — no Cloud Function or rules deploy needed (server verified
