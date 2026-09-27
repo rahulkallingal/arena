@@ -4,6 +4,7 @@ import '../data/profanity.dart';
 import '../models/message.dart';
 import '../models/room.dart';
 import '../services/auth_service.dart';
+import '../services/room_notify_service.dart';
 import '../services/room_service.dart';
 import '../theme.dart';
 import '../widgets/join_stance_dialog.dart';
@@ -103,6 +104,8 @@ class _CreateRoomScreenState extends State<CreateRoomScreen> {
         createdBy: user.uid,
         createdByName: _auth.displayName,
       );
+      // The creator wants to hear when people argue in their room.
+      await RoomNotifyService.autoEnable(id);
       final room = Room(
         id: id,
         name: name,

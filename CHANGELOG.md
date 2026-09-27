@@ -2,6 +2,23 @@
 
 All notable changes to Arena will be documented in this file.
 
+## [1.13.1] - September 27, 2026 (Play versionCode 5, closed test)
+
+App-only release — no Cloud Function or rules deploy needed (server verified
+healthy: `notifyRoomOnNewMessage` runs on every message with no errors).
+
+### 🐛 Fixed
+- **Room notifications reached almost nobody.** The per-room 🔔 bell defaulted
+  to OFF and nothing turned it on, so no device was subscribed to room topics.
+  The bell now switches ON automatically when you create a room or post in it
+  (`RoomNotifyService.autoEnable`) — unless you already set it yourself, so an
+  explicit "off" is respected.
+- **Topic of the Day notification never showed.** The 9 AM alarms were being
+  scheduled, but `AndroidManifest.xml` was missing flutter_local_notifications'
+  `ScheduledNotificationReceiver` (so nothing displayed them when they fired)
+  and the boot receiver + `RECEIVE_BOOT_COMPLETED` (so a reboot wiped them).
+  Both added.
+
 ## [1.13.0] - July 18, 2026
 
 > ⚠️ **Shipping this release needs three steps:** rebuild the app, **redeploy the

@@ -129,6 +129,21 @@ class RoomNotifyService {
     return prefs.getBool(_prefKey(roomId)) ?? false;
   }
 
+  /// Turns the 🔔 bell ON for a room the user takes part in (creates it or
+  /// posts in it) — but only if they've never set it themselves, so an explicit
+  /// "off" is respected. Best-effort — never throws, must not break the chat.
+  /// Returns true if it switched the bell on.
+  static Future<bool> autoEnable(String roomId) async {
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      if (prefs.containsKey(_prefKey(roomId))) return false;
+      await setOn(roomId, true);
+      return true;
+    } catch (_) {
+      return false;
+    }
+  }
+
   /// Turns notifications on/off for [roomId]. Subscribes/unsubscribes the phone
   /// to the room's push topic and remembers the choice. Throws if it can't reach
   /// Firebase, so the caller can revert the toggle and warn the user.

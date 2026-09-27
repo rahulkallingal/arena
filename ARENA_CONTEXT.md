@@ -12,7 +12,15 @@
 - **How to work with Rahul:** plain language, no jargon, small numbered steps,
   explain each command before he runs it.
 
-## CURRENT STATUS (updated 2026-07-18)
+## CURRENT STATUS (updated 2026-09-27)
+
+**v1.13.1 (2026-09-27) — SHIPPED to Play closed test (versionCode 5), app-only:**
+room 🔔 bell now auto-turns ON when you create/post in a room (it defaulted OFF
+and nobody was subscribed, so room pushes reached no one); daily Topic of the Day
+notification fixed (manifest was missing flutter_local_notifications'
+ScheduledNotificationReceiver + boot receiver). Android package is
+`com.cryptork.arena`. Unfinished 6-digit room-code work parked on branch
+`wip/room-codes` (not released).
 
 > This section is the up-to-date snapshot. The sections further down are older
 > background; when they disagree, trust this + `CHANGELOG.md` + `git log`.

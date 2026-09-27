@@ -254,6 +254,11 @@ class _ChatRoomScreenState extends State<ChatRoomScreen> {
       );
       _input.clear();
       if (mounted) setState(() => _replyingTo = null);
+      // Taking part in a debate → get notified of replies to it (unless the
+      // user already chose a bell setting for this room).
+      if (await RoomNotifyService.autoEnable(widget.room.id) && mounted) {
+        setState(() => _notifyOn = true);
+      }
     } catch (_) {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
