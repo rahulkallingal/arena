@@ -12,7 +12,16 @@
 - **How to work with Rahul:** plain language, no jargon, small numbered steps,
   explain each command before he runs it.
 
-## CURRENT STATUS (updated 2026-09-27)
+## CURRENT STATUS (updated 2026-10-02)
+
+**v1.14.0 / 1.0.1+7 (2026-10-02) — SHIPPED to Play closed test (versionCode 7):**
+merged PR #1 (other PC: Settings w/ Rate + Share Arena, one-time in-app review
+prompt, welcome walkthrough, share-sheet room invites, 5 s startup cap for the
+blank-white-screen hang, ASO text in playstore/STORE_LISTING.md) on top of
+v1.13.2's notification fixes. share_plus is now 13 (needed `flutter clean`
+once — stale Kotlin build cache broke the first build). The ASO listing text
+must still be pasted into Play Console. Tester docs (feedback report +
+production-access answers) came from Testers Community, a paid provider.
 
 **v1.13.2 (2026-09-27) — SHIPPED to Play closed test (versionCode 6), app-only:**
 room bell now ON by default for every room you're part of (opening a room, and
