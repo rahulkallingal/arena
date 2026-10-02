@@ -197,7 +197,8 @@ class _ChatRoomScreenState extends State<ChatRoomScreen> {
         ..writeln()
         ..writeln("(It's a private room — you'll also need the password from me.)");
     }
-    await Share.share(buffer.toString(), subject: 'Join "${r.name}" on Arena');
+    await SharePlus.instance.share(
+        ShareParams(text: buffer.toString(), subject: 'Join "${r.name}" on Arena'));
   }
 
   @override
