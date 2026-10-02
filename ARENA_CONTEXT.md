@@ -14,6 +14,11 @@
 
 ## CURRENT STATUS (updated 2026-10-02)
 
+**v1.14.1 / 1.0.1+8 (2026-10-02) — Play closed test (versionCode 8):** swipe
+left/right between My Rooms and Visited. Also (server-only, deployed): room
+pushes now exclude the sender's devices via an FCM condition, so you no longer
+get a notification for your own message after leaving the app.
+
 **v1.14.0 / 1.0.1+7 (2026-10-02) — SHIPPED to Play closed test (versionCode 7):**
 merged PR #1 (other PC: Settings w/ Rate + Share Arena, one-time in-app review
 prompt, welcome walkthrough, share-sheet room invites, 5 s startup cap for the

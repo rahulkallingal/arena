@@ -45,6 +45,7 @@ class _RoomsListScreenState extends State<RoomsListScreen>
   String? _category; // null = all categories
   bool _openingDaily = false;
   bool _showJoined = false; // false = rooms I created, true = rooms I joined
+  final _pages = PageController(); // page 0 = My Rooms, page 1 = Visited
   bool _hideVerifyBanner = false;
 
   Set<String> _hidden = {}; // rooms the user removed from their own list
@@ -245,6 +246,7 @@ class _RoomsListScreenState extends State<RoomsListScreen>
     WidgetsBinding.instance.removeObserver(this);
     _hiddenSub?.cancel();
     _searchController.dispose();
+    _pages.dispose();
     super.dispose();
   }
 
@@ -289,10 +291,10 @@ class _RoomsListScreenState extends State<RoomsListScreen>
     }
   }
 
-  bool _matchesFilters(Room room) {
+  bool _matchesFilters(Room room, {required bool joined}) {
     if (room.isDaily) return false; // shown in the featured card instead
     // In "My Rooms", hide rooms the user removed from their own list.
-    if (!_showJoined && _hidden.contains(room.id)) return false;
+    if (!joined && _hidden.contains(room.id)) return false;
     if (_category != null && room.category != _category) return false;
     if (_query.isEmpty) return true;
     final q = _query.toLowerCase();
@@ -403,65 +405,83 @@ class _RoomsListScreenState extends State<RoomsListScreen>
           ),
           _RoomsToggle(
             showJoined: _showJoined,
-            onChanged: (v) => setState(() => _showJoined = v),
+            onChanged: (v) {
+              setState(() => _showJoined = v);
+              _pages.animateToPage(v ? 1 : 0,
+                  duration: const Duration(milliseconds: 250),
+                  curve: Curves.easeOut);
+            },
           ),
           Expanded(
-            child: StreamBuilder<List<Room>>(
-              stream: _showJoined
-                  ? _rooms.watchJoinedRooms(_auth.currentUser!.uid)
-                  : _rooms.watchMyRooms(_auth.currentUser!.uid),
-              builder: (context, snapshot) {
-                if (snapshot.hasError) {
-                  return const _Centered(
-                    emoji: '⚠️',
-                    title: 'Could not load rooms',
-                    subtitle: 'Check your internet connection and try again.',
-                  );
-                }
-                if (!snapshot.hasData) {
-                  return const Center(child: CircularProgressIndicator());
-                }
-                final list =
-                    snapshot.data!.where(_matchesFilters).toList();
-                if (list.isEmpty) {
-                  final filtering = _query.isNotEmpty || _category != null;
-                  return _Centered(
-                    emoji: filtering
-                        ? '🔍'
-                        : (_showJoined ? '👥' : '🗣️'),
-                    title: filtering
-                        ? 'No rooms match'
-                        : (_showJoined
-                            ? 'No visited rooms yet'
-                            : 'No rooms created yet'),
-                    subtitle: filtering
-                        ? 'Try a different search or category.'
-                        : (_showJoined
-                            ? 'Rooms you open will show up here, so you can '
-                                'jump back in any time.'
-                            : 'Create a new debate room or discover rooms from others!'),
-                  );
-                }
-                return ListView.builder(
-                  padding: const EdgeInsets.only(top: 4, bottom: 90),
-                  itemCount: list.length,
-                  itemBuilder: (context, i) {
-                    final room = list[i];
-                    return RoomCard(
-                      room: room,
-                      // On the Visited tab, badge how many messages arrived
-                      // since this user last opened the room.
-                      unreadBaseline: _showJoined ? room.lastSeenCount : null,
-                      onTap: () => _openRoom(room),
-                      onLongPress: () => _roomCardMenu(room),
-                    );
-                  },
-                );
-              },
+            // Swipe left/right to switch between My Rooms and Visited.
+            child: PageView(
+              controller: _pages,
+              onPageChanged: (i) => setState(() => _showJoined = i == 1),
+              children: [_roomsPage(false), _roomsPage(true)],
             ),
           ),
         ],
       ),
+    );
+  }
+
+  /// One page of the swipeable rooms list: rooms I created ([joined] false) or
+  /// rooms I've visited ([joined] true).
+  Widget _roomsPage(bool joined) {
+    return StreamBuilder<List<Room>>(
+      stream: joined
+          ? _rooms.watchJoinedRooms(_auth.currentUser!.uid)
+          : _rooms.watchMyRooms(_auth.currentUser!.uid),
+      builder: (context, snapshot) {
+        if (snapshot.hasError) {
+          return const _Centered(
+            emoji: '⚠️',
+            title: 'Could not load rooms',
+            subtitle: 'Check your internet connection and try again.',
+          );
+        }
+        if (!snapshot.hasData) {
+          return const Center(child: CircularProgressIndicator());
+        }
+        final list =
+            snapshot.data!
+                .where((r) => _matchesFilters(r, joined: joined))
+                .toList();
+        if (list.isEmpty) {
+          final filtering = _query.isNotEmpty || _category != null;
+          return _Centered(
+            emoji: filtering
+                ? '🔍'
+                : (joined ? '👥' : '🗣️'),
+            title: filtering
+                ? 'No rooms match'
+                : (joined
+                    ? 'No visited rooms yet'
+                    : 'No rooms created yet'),
+            subtitle: filtering
+                ? 'Try a different search or category.'
+                : (joined
+                    ? 'Rooms you open will show up here, so you can '
+                        'jump back in any time.'
+                    : 'Create a new debate room or discover rooms from others!'),
+          );
+        }
+        return ListView.builder(
+          padding: const EdgeInsets.only(top: 4, bottom: 90),
+          itemCount: list.length,
+          itemBuilder: (context, i) {
+            final room = list[i];
+            return RoomCard(
+              room: room,
+              // On the Visited tab, badge how many messages arrived
+              // since this user last opened the room.
+              unreadBaseline: joined ? room.lastSeenCount : null,
+              onTap: () => _openRoom(room),
+              onLongPress: () => _roomCardMenu(room),
+            );
+          },
+        );
+      },
     );
   }
 

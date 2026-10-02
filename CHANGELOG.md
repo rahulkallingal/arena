@@ -2,6 +2,12 @@
 
 All notable changes to Arena will be documented in this file.
 
+## [1.14.1] - October 2, 2026 (Play versionCode 8, closed test)
+
+### ✨ Added
+- **Swipe between My Rooms and Visited** on the home screen. The list is now a
+  two-page `PageView`; swiping and the toggle buttons stay in sync.
+
 ## [Server] - October 2, 2026 (Cloud Function only — no app update needed)
 
 ### 🐛 Fixed
