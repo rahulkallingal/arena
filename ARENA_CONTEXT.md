@@ -14,6 +14,12 @@
 
 ## CURRENT STATUS (updated 2026-10-02)
 
+**v1.14.2 / 1.0.1+9 — Play closed test (versionCode 9):** message long-press
+"Copy text"; profanity warning catches plurals/forms/disguises and runs on edits.
+Server: the sender-exclusion FCM condition was REVERTED (negated conditions are
+never delivered — it silently stopped all room pushes for a few hours).
+Self-notification after backgrounding is a known open issue.
+
 **v1.14.1 / 1.0.1+8 (2026-10-02) — Play closed test (versionCode 8):** swipe
 left/right between My Rooms and Visited. Also (server-only, deployed): room
 pushes now exclude the sender's devices via an FCM condition, so you no longer

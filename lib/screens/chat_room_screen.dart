@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:share_plus/share_plus.dart';
 
 import '../data/profanity.dart';
@@ -315,7 +316,8 @@ class _ChatRoomScreenState extends State<ChatRoomScreen> {
     _inputFocus.requestFocus();
   }
 
-  /// Long-press menu on a message: delete your own, or report/block others.
+  /// Long-press menu on a message: reply, copy, edit/delete your own, or
+  /// report/block others.
   void _showMessageActions(Message m) {
     final isMine = m.senderId == _auth.currentUser?.uid;
     // Drop focus from the input so dismissing this menu doesn't pop the keyboard
@@ -334,6 +336,15 @@ class _ChatRoomScreenState extends State<ChatRoomScreen> {
                 onTap: () {
                   Navigator.pop(sheetContext);
                   _startReply(m);
+                },
+              ),
+              ListTile(
+                leading: const Icon(Icons.copy, color: AppColors.secondary),
+                title: const Text('Copy text'),
+                onTap: () async {
+                  Navigator.pop(sheetContext);
+                  await Clipboard.setData(ClipboardData(text: m.text));
+                  _toast('Message copied.');
                 },
               ),
               if (isMine) ...[
@@ -427,6 +438,11 @@ class _ChatRoomScreenState extends State<ChatRoomScreen> {
     );
     if (result == null) return;
     if (result.isEmpty || result == m.text) return;
+    // Same warning as sending, so an edit can't sneak vulgar words in.
+    if (hasProfanity(result)) {
+      final proceed = await _confirmProfanity();
+      if (proceed != true || !mounted) return;
+    }
     try {
       await _rooms.editMessage(widget.room.id, m.id, result);
     } catch (_) {

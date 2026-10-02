@@ -2,6 +2,20 @@
 
 All notable changes to Arena will be documented in this file.
 
+## [1.14.2] - October 2, 2026 (Play versionCode 9, closed test)
+
+### ✨ Added
+- **Copy text** in the message long-press menu (copies to the clipboard).
+
+### 🐛 Fixed
+- **"For fucks sake" wasn't flagged.** The bad-language warning matched exact
+  words only, so plurals and other forms ("fucks", "fucked", "bitches",
+  "shitty") slipped through. Now: whole word + plural "s", any word starting
+  with an unambiguous vulgar stem, common disguises ("f*ck", "fck", "stfu").
+  Ambiguous roots (dick/cock/prick/rape) stay whole-word so cocktail, Dickens,
+  prickly and rapeseed aren't flagged. Covered by `test/profanity_test.dart`.
+- **Editing a message skipped the warning** — edits now get the same prompt.
+
 ## [Server] - October 2, 2026 (evening) — REVERT
 
 ### 🐛 Fixed
