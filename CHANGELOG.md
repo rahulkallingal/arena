@@ -2,6 +2,16 @@
 
 All notable changes to Arena will be documented in this file.
 
+## [Server] - October 2, 2026 (evening) — REVERT
+
+### 🐛 Fixed
+- **Room notifications stopped arriving** after the earlier server change. The
+  FCM condition `'room_X' in topics && !('user_<sender>' in topics)` passes
+  `validate_only` but FCM does not deliver negated conditions. Proven with two
+  real test pushes to one account: plain topic arrived, the `!` condition never
+  did. Reverted to plain `topic:` and redeployed. Self-notifications after
+  backgrounding are back as a known issue until a different fix ships.
+
 ## [1.14.1] - October 2, 2026 (Play versionCode 8, closed test)
 
 ### ✨ Added

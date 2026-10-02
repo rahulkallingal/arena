@@ -85,15 +85,8 @@ exports.notifyRoomOnNewMessage = onDocumentCreated(
     const body = (sender + ": " + text).slice(0, 180);
 
     try {
-      // Every signed-in device is subscribed to its user's own topic, so this
-      // condition skips ALL the sender's devices server-side. The in-app
-      // senderId check only works while the app is open; a backgrounded app's
-      // notification is shown by Android directly, so it must be excluded here.
-      const target = msg.senderId
-        ? { condition: `'${topicFor(roomId)}' in topics && !('${userTopicFor(msg.senderId)}' in topics)` }
-        : { topic: topicFor(roomId) };
       await getMessaging().send({
-        ...target,
+        topic: topicFor(roomId),
         notification: { title: roomName, body: body },
         // senderId lets the sender's own device drop this push (you subscribe to
         // your room's topic, so FCM would otherwise notify you of your own message).
