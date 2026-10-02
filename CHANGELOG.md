@@ -2,6 +2,17 @@
 
 All notable changes to Arena will be documented in this file.
 
+## [Server] - October 2, 2026 (Cloud Function only — no app update needed)
+
+### 🐛 Fixed
+- **You got a notification for your own message** if you left the app right
+  after sending. The in-app `senderId` filter only runs while Arena is open; a
+  backgrounded app's push is drawn by Android itself. `notifyRoomOnNewMessage`
+  now targets the FCM condition `'room_X' in topics && !('user_<sender>' in
+  topics)`, so the sender's devices are excluded server-side. Validated with an
+  FCM dry run, deployed to asia-south1. Works for every app version that
+  subscribes to `user_<uid>` (v1.6.0+).
+
 ## [1.14.0] - October 2, 2026 (Play versionCode 7, closed test)
 
 Merges PR #1 (built on the other PC as "1.0.1+3", answering the Testers
