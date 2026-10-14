@@ -8,6 +8,7 @@
 // Deploy with:  firebase deploy --only functions
 // (Requires the Firebase project to be on the Blaze plan.)
 
+const { setGlobalOptions } = require("firebase-functions/v2");
 const { onDocumentCreated } = require("firebase-functions/v2/firestore");
 const { onRequest, onCall, HttpsError } = require("firebase-functions/v2/https");
 const { onSchedule } = require("firebase-functions/v2/scheduler");
@@ -19,6 +20,15 @@ const { getAuth } = require("firebase-admin/auth");
 const crypto = require("crypto");
 
 initializeApp();
+
+// Hard ceiling on how many copies of any function can run at once.
+//
+// Cloud Functions bills per invocation and scales to 1000 instances by default.
+// A trigger loop or a burst of abuse would otherwise run up a bill with nothing
+// to stop it, and Blaze has no spending cap — only after-the-fact alerts. With
+// a cap, the worst case is that Arena gets SLOW under load, not expensive.
+// Raise this if real traffic ever justifies it.
+setGlobalOptions({ maxInstances: 10 });
 
 // Must match RoomNotifyService.topicFor() in the Flutter app.
 function topicFor(roomId) {
@@ -58,6 +68,36 @@ const TREND_LINES = [
   "🔥 Your debate is trending — don't let them win. Reply now!",
   "💬 is buzzing right now. Share your side before it cools off!",
 ];
+
+// Writes a notification-history doc for one user. Best-effort — a history
+// write must never block or fail the push it's recording.
+async function recordNotification(uid, { type, title, body, roomId }) {
+  try {
+    await getFirestore().collection("users").doc(uid).collection("notifications").add({
+      type, title, body, roomId: roomId || null,
+      createdAt: FieldValue.serverTimestamp(),
+      read: false,
+    });
+  } catch (e) {
+    console.error("Failed to record notification for", uid, e);
+  }
+}
+
+// Fans a notification-history write out to every uid in a room subcollection
+// (notifySubscribers or participants), skipping `skipUid` (e.g. the sender).
+// Best-effort per-doc — one failed write must not stop the rest.
+async function recordToSubcollection(roomId, subcollection, skipUid, payload) {
+  try {
+    const snap = await getFirestore()
+      .collection("rooms").doc(roomId).collection(subcollection).get();
+    await Promise.all(snap.docs
+      .map((d) => d.id)
+      .filter((uid) => uid !== skipUid)
+      .map((uid) => recordNotification(uid, payload)));
+  } catch (e) {
+    console.error(`Failed to fan out ${subcollection} notifications for room`, roomId, e);
+  }
+}
 
 exports.notifyRoomOnNewMessage = onDocumentCreated(
   "rooms/{roomId}/messages/{messageId}",
@@ -110,6 +150,9 @@ exports.notifyRoomOnNewMessage = onDocumentCreated(
     } catch (e) {
       console.error("Failed to send room notification:", e);
     }
+    await recordToSubcollection(roomId, "notifySubscribers", msg.senderId, {
+      type: "room_message", title: roomName, body, roomId,
+    });
 
     // If this message is a reply, also notify the author of the quoted message
     // directly (via their personal user topic) — even if they don't follow the
@@ -132,6 +175,10 @@ exports.notifyRoomOnNewMessage = onDocumentCreated(
       } catch (e) {
         console.error("Failed to send reply notification:", e);
       }
+      await recordNotification(replyToSenderId, {
+        type: "reply", title: sender + " replied to you",
+        body: text.slice(0, 180), roomId,
+      });
     }
 
     // ---- Trending re-engagement -----------------------------------------
@@ -168,14 +215,18 @@ exports.notifyRoomOnNewMessage = onDocumentCreated(
 
       if (fire) {
         const line = TREND_LINES[Math.floor(Math.random() * TREND_LINES.length)];
+        const trendBody = '"' + roomName + '" ' + line;
         await getMessaging().send({
           topic: participantsTopicFor(roomId),
-          notification: { title: roomName, body: '"' + roomName + '" ' + line },
+          notification: { title: roomName, body: trendBody },
           data: { roomId: roomId, type: "trending" },
           android: {
             priority: "high",
             notification: { channelId: "trending" },
           },
+        });
+        await recordToSubcollection(roomId, "participants", msg.senderId, {
+          type: "trending", title: roomName, body: trendBody, roomId,
         });
       }
     } catch (e) {
@@ -254,6 +305,15 @@ exports.broadcastTopic = onRequest(
         priority: "high",
         notification: { channelId: "broadcast" },
       },
+    });
+
+    // One shared doc every signed-in client reads directly — no per-user
+    // fan-out needed since every account is already subscribed to this topic.
+    await db.collection("broadcasts").doc(roomId).set({
+      title: "🔥 New debate is live!",
+      body: topic.slice(0, 180),
+      roomId,
+      createdAt: FieldValue.serverTimestamp(),
     });
 
     return res.status(200).json({ ok: true, roomId, topic });
@@ -548,6 +608,168 @@ exports.reportedMessages = onRequest(
   }
 );
 
+// ---- Shared: erase one user and everything they own ----------------------
+// Used by BOTH the admin endpoint (looks users up by email) and the
+// self-service deleteMyAccount callable (uses the caller's own auth token).
+// Pass a one-off snapshot of /rooms so bulk admin deletes read it once.
+// Irreversible. Idempotent enough that a stale rooms entry is harmless.
+// Stand-in identity left on content whose author has gone. DELETED_UID must
+// never be a real uid, so no live user inherits edit/delete rights over the
+// content (the Firestore rules key off senderId / createdBy).
+const DELETED_UID = "deleted";
+const DELETED_NAME = "Deleted user";
+
+async function purgeUser(uid, roomsSnap, { anonymise = false } = {}) {
+  const db = getFirestore();
+  const auth = getAuth();
+  let messagesDeleted = 0;
+  let roomsDeleted = 0;
+  let messagesAnonymised = 0;
+  let roomsAnonymised = 0;
+
+  // Reports they filed. Always hard-deleted — these are private to the user
+  // and have no value to anyone else once the account is gone.
+  const reps = await db
+    .collection("reports")
+    .where("reporterId", "==", uid)
+    .get();
+  for (const d of reps.docs) await d.ref.delete();
+
+  // Walk every room.
+  //
+  // anonymise=false (admin/moderation): delete rooms they created outright and
+  // strip their messages — used when removing an abusive account's content.
+  //
+  // anonymise=true (self-service deletion): KEEP the rooms and the messages and
+  // just blank the author identity. Deleting a room would take every other
+  // participant's messages with it — and the "Topic of the Day" room is owned
+  // by whichever user happened to open the app first that day
+  // (DailyTopicService.ensureTodayRoom), so a single person leaving would
+  // otherwise wipe a shared debate that looks like it belongs to Arena.
+  for (const roomDoc of roomsSnap.docs) {
+    const roomRef = roomDoc.ref;
+    const theirRoom = (roomDoc.data() || {}).createdBy === uid;
+
+    if (theirRoom && !anonymise) {
+      await db.recursiveDelete(roomRef);
+      roomsDeleted++;
+      continue;
+    }
+    if (theirRoom) {
+      // The daily room is "owned" by whoever opened the app first that day
+      // (DailyTopicService.ensureTodayRoom writes their uid as createdBy but
+      // always shows "Arena" as the author). Stamping it "Deleted user" would
+      // relabel a room that is supposed to look like it belongs to Arena, in
+      // front of every other user. Drop the uid link, keep the Arena byline.
+      const isDaily = (roomDoc.data() || {}).isDaily === true;
+      await roomRef.update({
+        createdBy: DELETED_UID,
+        ...(isDaily ? {} : { createdByName: DELETED_NAME }),
+      });
+      roomsAnonymised++;
+    }
+
+    const msgs = await roomRef
+      .collection("messages")
+      .where("senderId", "==", uid)
+      .get();
+    for (const m of msgs.docs) {
+      if (anonymise) {
+        await m.ref.update({
+          senderId: DELETED_UID,
+          senderName: DELETED_NAME,
+          senderAvatar: FieldValue.delete(),
+        });
+        messagesAnonymised++;
+      } else {
+        await m.ref.delete();
+        messagesDeleted++;
+      }
+    }
+
+    // Messages by OTHER people that quote one of theirs carry a denormalized
+    // copy of their name and uid (see Message.replyToSender/replyToSenderId).
+    // Blank those too, or the name survives in every reply quote.
+    if (anonymise) {
+      const quotes = await roomRef
+        .collection("messages")
+        .where("replyToSenderId", "==", uid)
+        .get();
+      for (const q of quotes.docs) {
+        await q.ref.update({
+          replyToSenderId: DELETED_UID,
+          replyToSender: DELETED_NAME,
+        });
+      }
+    }
+
+    await roomRef.collection("votes").doc(uid).delete();
+    // Drop them from this room's notification fan-out lists too — otherwise a
+    // future message keeps fanning a write out to a uid that no longer exists.
+    await roomRef.collection("notifySubscribers").doc(uid).delete();
+    await roomRef.collection("participants").doc(uid).delete();
+  }
+
+  // Their profile doc + subcollections (joinedRooms, hiddenRooms…).
+  await db.recursiveDelete(db.collection("users").doc(uid));
+  // Finally the login account itself.
+  await auth.deleteUser(uid);
+
+  return { messagesDeleted, roomsDeleted, messagesAnonymised, roomsAnonymised };
+}
+
+// ---- Let a signed-in user delete their OWN account ----------------------
+// Google Play requires an in-app account deletion path for any app that lets
+// people create accounts. This is deliberately a callable (not an onRequest
+// guarded by BROADCAST_SECRET): identity comes from the caller's auth token,
+// so the app never needs to hold a shared secret. A user can only ever delete
+// themselves — the uid is taken from the token, never from the request body.
+// timeoutSeconds: purgeUser walks EVERY room (one query per room), so the work
+// grows with the size of the database, not with how much the user posted. At
+// the 60s default a big enough /rooms collection would time out midway — and
+// because the login is deleted last, that leaves data half-erased with the
+// account still usable. 300s buys a lot of headroom; if this ever gets close,
+// the fix is a targeted index, not a bigger number.
+exports.deleteMyAccount = onCall(
+    { region: "asia-south1", timeoutSeconds: 300 }, async (req) => {
+  if (!req.auth) {
+    throw new HttpsError("unauthenticated", "Sign in first.");
+  }
+  // Belt-and-braces against an accidental client call; the real confirmation
+  // is the two-step dialog in the app.
+  if (!req.data || req.data.confirm !== "DELETE") {
+    throw new HttpsError("invalid-argument", 'Send { confirm: "DELETE" }.');
+  }
+  const uid = req.auth.uid;
+  const db = getFirestore();
+
+  // A banned account may NOT erase itself. Banning disables the login and
+  // revokes refresh tokens, but a callable verifies the ID token without
+  // checking revocation — so a banned user whose app is already open holds a
+  // valid token for up to an hour. That was long enough to anonymise their own
+  // messages and destroy the link between the abuse and the account, which is
+  // exactly the evidence a ban exists to preserve. Reports filed ABOUT them
+  // survive regardless (they snapshot offenderId/offenderName/messageText),
+  // but the account itself has to stay for an appeal or a takedown request.
+  if ((await db.collection("banned").doc(uid).get()).exists) {
+    throw new HttpsError(
+        "permission-denied",
+        "This account is suspended and cannot be deleted. Contact " +
+        "cryptork97@gmail.com if you believe this is a mistake.");
+  }
+
+  const roomsSnap = await db.collection("rooms").get();
+  try {
+    // anonymise: the user's own data goes, but rooms and debate threads they
+    // took part in survive with the author blanked. See purgeUser.
+    const stats = await purgeUser(uid, roomsSnap, { anonymise: true });
+    return { ok: true, ...stats };
+  } catch (e) {
+    console.error("deleteMyAccount failed for", uid, e);
+    throw new HttpsError("internal", "Could not delete the account.");
+  }
+});
+
 // ---- Admin: delete user accounts + all their data (call from Admin app) --
 // For each email: removes the Firebase Auth account AND everything they own —
 // their profile (users/{uid} + subcollections), every message they posted, any
@@ -557,8 +779,10 @@ exports.reportedMessages = onRequest(
 //   POST https://asia-south1-arena-a049d.cloudfunctions.net/deleteUserAccount
 //   Header:  x-arena-key: <BROADCAST_SECRET>
 //   Body:    { "emails": ["a@x.com", "b@y.com"], "confirm": "DELETE USERS" }
+// timeoutSeconds: same full-/rooms walk as deleteMyAccount, once per email in
+// the batch, so this one needs the headroom even more.
 exports.deleteUserAccount = onRequest(
-  { region: "asia-south1", secrets: [broadcastSecret] },
+  { region: "asia-south1", secrets: [broadcastSecret], timeoutSeconds: 300 },
   async (req, res) => {
     if (req.method !== "POST") {
       return res.status(405).json({ error: "Use POST" });
@@ -597,40 +821,7 @@ exports.deleteUserAccount = onRequest(
           results.push({ email, status: "not_found" });
           continue;
         }
-        let messagesDeleted = 0;
-        let roomsDeleted = 0;
-
-        // Reports they filed.
-        const reps = await db
-          .collection("reports")
-          .where("reporterId", "==", uid)
-          .get();
-        for (const d of reps.docs) await d.ref.delete();
-
-        // Walk every room: delete rooms they created outright, otherwise strip
-        // their messages and their vote from that room.
-        for (const roomDoc of roomsSnap.docs) {
-          const roomRef = roomDoc.ref;
-          if ((roomDoc.data() || {}).createdBy === uid) {
-            await db.recursiveDelete(roomRef);
-            roomsDeleted++;
-            continue;
-          }
-          const msgs = await roomRef
-            .collection("messages")
-            .where("senderId", "==", uid)
-            .get();
-          for (const m of msgs.docs) {
-            await m.ref.delete();
-            messagesDeleted++;
-          }
-          await roomRef.collection("votes").doc(uid).delete();
-        }
-
-        // Their profile doc + subcollections (joinedRooms, hiddenRooms, pets…).
-        await db.recursiveDelete(db.collection("users").doc(uid));
-        // Finally the login account itself.
-        await auth.deleteUser(uid);
+        const { messagesDeleted, roomsDeleted } = await purgeUser(uid, roomsSnap);
 
         results.push({
           email,

@@ -9,6 +9,7 @@ import '../models/room.dart';
 import '../services/auth_service.dart';
 import '../services/daily_override_service.dart';
 import '../services/daily_topic_service.dart';
+import '../services/notification_history_service.dart';
 import '../services/onboarding_service.dart';
 import '../services/review_service.dart';
 import '../services/room_service.dart';
@@ -16,10 +17,11 @@ import '../theme.dart';
 import '../widgets/join_stance_dialog.dart';
 import '../widgets/room_card.dart';
 import '../widgets/user_avatar.dart';
+import 'blocked_users_screen.dart';
 import 'chat_room_screen.dart';
 import 'create_room_screen.dart';
 import 'login_screen.dart';
-import 'blocked_users_screen.dart';
+import 'notifications_screen.dart';
 import 'onboarding_screen.dart';
 import 'profile_screen.dart';
 import 'room_discovery_screen.dart';
@@ -318,6 +320,7 @@ class _RoomsListScreenState extends State<RoomsListScreen>
               );
             },
           ),
+          if (_auth.currentUser != null) const _NotificationsBellButton(),
           PopupMenuButton<String>(
             tooltip: 'Account',
             icon: UserAvatar(
@@ -335,11 +338,11 @@ class _RoomsListScreenState extends State<RoomsListScreen>
                 Navigator.of(context).push(
                   MaterialPageRoute(builder: (_) => const SettingsScreen()),
                 );
-              } else if (value == 'password') {
-                _showChangePassword();
               } else if (value == 'blocked') {
                 Navigator.of(context).push(MaterialPageRoute(
                     builder: (_) => const BlockedUsersScreen()));
+              } else if (value == 'password') {
+                _showChangePassword();
               } else if (value == 'logout') {
                 _logout();
               }
@@ -987,6 +990,36 @@ class _Centered extends StatelessWidget {
           ],
         ),
       ),
+    );
+  }
+}
+
+/// The 🔔 app-bar icon that opens the notifications history screen, with a
+/// small red dot while there's an unread personal notification.
+class _NotificationsBellButton extends StatelessWidget {
+  const _NotificationsBellButton();
+
+  @override
+  Widget build(BuildContext context) {
+    final uid = FirebaseAuth.instance.currentUser!.uid;
+    return StreamBuilder<int>(
+      stream: NotificationHistoryService().watchUnreadCount(uid),
+      builder: (context, snap) {
+        final unread = snap.data ?? 0;
+        return IconButton(
+          tooltip: 'Notifications',
+          icon: Badge(
+            isLabelVisible: unread > 0,
+            backgroundColor: AppColors.primary,
+            child: const Icon(Icons.notifications_outlined),
+          ),
+          onPressed: () {
+            Navigator.of(context).push(
+              MaterialPageRoute(builder: (_) => const NotificationsScreen()),
+            );
+          },
+        );
+      },
     );
   }
 }

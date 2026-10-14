@@ -1,4 +1,5 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:cloud_functions/cloud_functions.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:google_sign_in/google_sign_in.dart';
 
@@ -198,6 +199,30 @@ class AuthService {
       await GoogleSignIn.instance.signOut();
     } catch (_) {/* not signed in with Google */}
     await _auth.signOut();
+  }
+
+  /// Permanently deletes this account: the login, the profile, the person's
+  /// votes and the reports they filed.
+  ///
+  /// Their messages and any rooms they created are KEPT and anonymised to
+  /// "Deleted user" instead — deleting a room would take every other
+  /// participant's messages with it, and the daily room is owned by whoever
+  /// opened the app first that day. See purgeUser(anonymise: true) in
+  /// functions/index.js; the dialog copy in settings_screen.dart must match.
+  ///
+  /// Google Play requires an in-app deletion path for any app with accounts.
+  /// The erasing happens in the `deleteMyAccount` Cloud Function, which takes
+  /// the uid from the caller's token (so nobody can delete anyone else) and can
+  /// clean up data this device isn't allowed to touch directly.
+  ///
+  /// Signs out afterwards so the auth gate in main.dart drops straight back to
+  /// the login screen — the local session would otherwise linger with a token
+  /// for a user that no longer exists.
+  Future<void> deleteMyAccount() async {
+    final callable = FirebaseFunctions.instanceFor(region: 'asia-south1')
+        .httpsCallable('deleteMyAccount');
+    await callable.call<Map<String, dynamic>>({'confirm': 'DELETE'});
+    await signOut();
   }
 
   /// Classifies a login/signup error to the field it belongs to, so the UI can

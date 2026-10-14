@@ -5,7 +5,8 @@ publish_to: 'none'
 
 # Version: <name>+<build number>. For Android, name -> versionName and the
 # build number -> versionCode. Bump the build number on every Play Store upload.
-version: 1.0.2+10
+# versionCode 10 is already taken by the closed test, so a new upload needs 11+.
+version: 1.0.3+12
 
 environment:
   sdk: ^3.12.2
@@ -28,6 +29,8 @@ dependencies:
   cloud_functions: ^6.3.3
   in_app_review: ^2.0.12
   share_plus: ^13.3.0
+  firebase_app_check: ^0.4.8
+  firebase_crashlytics: ^5.4.0
 
   # NOTE: The packages below are added during setup with ONE command so their
   # versions always match your Flutter install (see SETUP_WINDOWS.md, Step 3):
